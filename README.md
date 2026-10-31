@@ -25,7 +25,7 @@ Sin cuentas · Sin backend · Guardado automático · Estética Frutiger Aero
 
 </details>
 
-*Capturas de un entorno de prueba con los cursos iniciales. Los datos que aparecen en tu navegador dependen de tus propios registros.*
+_Capturas de un entorno de prueba con los cursos iniciales. Los datos que aparecen en tu navegador dependen de tus propios registros._
 
 ## Contenido
 
@@ -44,16 +44,16 @@ Sin cuentas · Sin backend · Guardado automático · Estética Frutiger Aero
 
 ## Qué puedes hacer
 
-| Función | Descripción |
-| --- | --- |
-| Registrar notas | Cuatro evaluaciones por curso, con valores de 0 a 20 y hasta dos decimales. |
-| Proteger casillas | Candados independientes: un clic para bloquear y doble clic para desbloquear. |
-| Consultar promedios | Resultados definitivos, promedios provisionales y acumulados ponderados. |
-| Planificar evaluaciones | Calculadora de notas necesarias con simulaciones que no cambian tus registros. |
-| Administrar cursos | Agregar, renombrar, cambiar ponderaciones, restablecer notas y eliminar cursos. |
-| Revisar tu avance | Seis tarjetas estadísticas, estados académicos y progreso por curso. |
-| Conservar y trasladar datos | Guardado automático, respaldos JSON e informes CSV para Excel. |
-| Personalizar la interfaz | Temas Aero claro y nocturno; nota mínima aprobatoria configurable. |
+| Función                     | Descripción                                                                     |
+| --------------------------- | ------------------------------------------------------------------------------- |
+| Registrar notas             | Cuatro evaluaciones por curso, con valores de 0 a 20 y hasta dos decimales.     |
+| Proteger casillas           | Candados independientes: un clic para bloquear y doble clic para desbloquear.   |
+| Consultar promedios         | Resultados definitivos, promedios provisionales y acumulados ponderados.        |
+| Planificar evaluaciones     | Calculadora de notas necesarias con simulaciones que no cambian tus registros.  |
+| Administrar cursos          | Agregar, renombrar, cambiar ponderaciones, restablecer notas y eliminar cursos. |
+| Revisar tu avance           | Seis tarjetas estadísticas, estados académicos y progreso por curso.            |
+| Conservar y trasladar datos | Guardado automático, respaldos JSON e informes CSV para Excel.                  |
+| Personalizar la interfaz    | Temas Aero claro y nocturno; nota mínima aprobatoria configurable.              |
 
 ## Inicio rápido
 
@@ -119,14 +119,14 @@ Los registros de inicio y los mensajes de error se guardan en `.launcher/`, una 
 
 La pantalla principal reúne una tabla editable y seis tarjetas:
 
-| Tarjeta | Qué muestra |
-| --- | --- |
-| Promedio general | Media simple de los promedios disponibles, indicando si incluye resultados provisionales. También muestra la media de los cursos definitivos. |
-| Cursos aprobados | Cursos con las cuatro notas registradas y promedio igual o superior al mínimo configurado. |
-| Cursos desaprobados | Cursos completos cuyo promedio no alcanza el mínimo. |
-| Cursos pendientes | Cursos que todavía no tienen las cuatro notas, incluidos los cursos sin registros. |
-| Notas registradas | Evaluaciones completadas respecto al total de evaluaciones. |
-| Notas pendientes | Cantidad de evaluaciones que faltan por registrar. |
+| Tarjeta             | Qué muestra                                                                                                                                   |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Promedio general    | Media simple de los promedios disponibles, indicando si incluye resultados provisionales. También muestra la media de los cursos definitivos. |
+| Cursos aprobados    | Cursos con las cuatro notas registradas y promedio igual o superior al mínimo configurado.                                                    |
+| Cursos desaprobados | Cursos completos cuyo promedio no alcanza el mínimo.                                                                                          |
+| Cursos pendientes   | Cursos que todavía no tienen las cuatro notas, incluidos los cursos sin registros.                                                            |
+| Notas registradas   | Evaluaciones completadas respecto al total de evaluaciones.                                                                                   |
+| Notas pendientes    | Cantidad de evaluaciones que faltan por registrar.                                                                                            |
 
 Cada curso muestra su progreso de **0/4 a 4/4 evaluaciones**, una barra de avance, sus ponderaciones, el promedio y el estado académico.
 
@@ -146,11 +146,11 @@ Cada curso tiene **Consolidado 1, Parcial, Consolidado 2 y Final**.
 
 Cada evaluación tiene su propio candado, incluso si la casilla está vacía.
 
-| Acción | Resultado |
-| --- | --- |
-| Un clic en el candado azul abierto | Bloquea inmediatamente esa casilla. |
-| Un clic en el candado dorado cerrado | Mantiene la casilla bloqueada. |
-| Doble clic en el candado dorado cerrado | Desbloquea la casilla. |
+| Acción                                  | Resultado                           |
+| --------------------------------------- | ----------------------------------- |
+| Un clic en el candado azul abierto      | Bloquea inmediatamente esa casilla. |
+| Un clic en el candado dorado cerrado    | Mantiene la casilla bloqueada.      |
+| Doble clic en el candado dorado cerrado | Desbloquea la casilla.              |
 
 Una nota bloqueada no permite edición. El estado del candado se guarda junto con los datos y se recupera al recargar o volver a abrir la aplicación.
 
@@ -160,12 +160,12 @@ Los candados protegen frente a cambios accidentales; no constituyen un sistema d
 
 El mínimo aprobatorio predeterminado es **11** y se puede cambiar desde **Tu meta de aprobación**. La configuración admite valores de 0 a 20 con hasta dos decimales y se guarda automáticamente.
 
-| Estado | Color | Condición |
-| --- | --- | --- |
-| Aprobado | Verde | Cuatro notas registradas y promedio definitivo mayor o igual al mínimo. |
-| Desaprobado | Rojo | Cuatro notas registradas y promedio definitivo inferior al mínimo. |
-| Pendiente | Amarillo | Al menos una nota registrada, pero todavía faltan evaluaciones. |
-| Sin notas | Gris | Ninguna evaluación registrada. |
+| Estado      | Color    | Condición                                                               |
+| ----------- | -------- | ----------------------------------------------------------------------- |
+| Aprobado    | Verde    | Cuatro notas registradas y promedio definitivo mayor o igual al mínimo. |
+| Desaprobado | Rojo     | Cuatro notas registradas y promedio definitivo inferior al mínimo.      |
+| Pendiente   | Amarillo | Al menos una nota registrada, pero todavía faltan evaluaciones.         |
+| Sin notas   | Gris     | Ninguna evaluación registrada.                                          |
 
 Un curso incompleto nunca se clasifica como aprobado o desaprobado definitivo.
 
@@ -258,11 +258,11 @@ Por ejemplo, para notas **16, 14, 18 y 15**, con pesos **20%, 25%, 20% y 35%**:
 
 Mientras falten notas, se muestran conceptos diferentes:
 
-| Concepto | Significado |
-| --- | --- |
-| Acumulado ponderado | Aporte de las evaluaciones ya registradas al resultado final. |
+| Concepto             | Significado                                                                           |
+| -------------------- | ------------------------------------------------------------------------------------- |
+| Acumulado ponderado  | Aporte de las evaluaciones ya registradas al resultado final.                         |
 | Promedio provisional | Acumulado dividido entre la suma de los pesos registrados, expresados como decimales. |
-| Promedio definitivo | Resultado ponderado cuando las cuatro evaluaciones tienen nota. |
+| Promedio definitivo  | Resultado ponderado cuando las cuatro evaluaciones tienen nota.                       |
 
 Si solo registras **16 en una evaluación de 20%**, el acumulado es **3,20** y el promedio provisional es **16,00**. Las evaluaciones vacías siguen pendientes.
 
@@ -287,23 +287,23 @@ Resultado mínimo mostrado: 6,29
 
 ## Cursos y ponderaciones iniciales
 
-| Curso | Consolidado 1 | Parcial | Consolidado 2 | Final |
-| --- | ---: | ---: | ---: | ---: |
-| Ecuaciones Diferenciales | 20% | 25% | 20% | 35% |
-| Conmutación y Enrutamiento | 20% | 20% | 20% | 40% |
-| Taller de Proyectos 2 | 20% | 20% | 20% | 40% |
-| Taller de Investigación 2 | 20% | 20% | 25% | 35% |
-| Metodologías Ágiles de Desarrollo | 20% | 20% | 20% | 40% |
-| Planeamiento Estratégico | 20% | 25% | 20% | 35% |
+| Curso                             | Consolidado 1 | Parcial | Consolidado 2 | Final |
+| --------------------------------- | ------------: | ------: | ------------: | ----: |
+| Ecuaciones Diferenciales          |           20% |     25% |           20% |   35% |
+| Conmutación y Enrutamiento        |           20% |     20% |           20% |   40% |
+| Taller de Proyectos 2             |           20% |     20% |           20% |   40% |
+| Taller de Investigación 2         |           20% |     20% |           25% |   35% |
+| Metodologías Ágiles de Desarrollo |           20% |     20% |           20% |   40% |
+| Planeamiento Estratégico          |           20% |     25% |           20% |   35% |
 
 Puedes adaptar los cursos y sus pesos desde la interfaz. El arranque no sobrescribe los registros existentes.
 
 ## Respaldos e intercambio de datos
 
-| Formato | Contenido | Uso |
-| --- | --- | --- |
-| JSON | Cursos, identificadores, notas, ponderaciones, candados, tema y mínimo aprobatorio. | Respaldo completo y restauración en otro navegador o equipo. |
-| CSV | Nombres de cursos, notas, pesos, promedio disponible, tipo de promedio y acumulado. | Consulta y análisis en Excel u otras hojas de cálculo. |
+| Formato | Contenido                                                                           | Uso                                                          |
+| ------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| JSON    | Cursos, identificadores, notas, ponderaciones, candados, tema y mínimo aprobatorio. | Respaldo completo y restauración en otro navegador o equipo. |
+| CSV     | Nombres de cursos, notas, pesos, promedio disponible, tipo de promedio y acumulado. | Consulta y análisis en Excel u otras hojas de cálculo.       |
 
 ### Exportar e importar JSON
 
@@ -344,13 +344,13 @@ Borrar los datos del sitio, usar un perfil privado o perder el disco puede elimi
 
 ## Tecnologías y estructura
 
-| Tecnología | Responsabilidad |
-| --- | --- |
-| React y TypeScript | Interfaz, componentes y modelos de datos. |
-| Vite | Servidor local y compilación de producción. |
-| Tailwind CSS y CSS | Estilos, diseño responsive y efectos Aero. |
-| Lucide React | Iconos de la interfaz. |
-| Dexie.js y dexie-react-hooks | Persistencia en IndexedDB y consultas reactivas. |
+| Tecnología                               | Responsabilidad                                          |
+| ---------------------------------------- | -------------------------------------------------------- |
+| React y TypeScript                       | Interfaz, componentes y modelos de datos.                |
+| Vite                                     | Servidor local y compilación de producción.              |
+| Tailwind CSS y CSS                       | Estilos, diseño responsive y efectos Aero.               |
+| Lucide React                             | Iconos de la interfaz.                                   |
+| Dexie.js y dexie-react-hooks             | Persistencia en IndexedDB y consultas reactivas.         |
 | Vitest, Testing Library y fake-indexeddb | Pruebas de lógica, componentes y almacenamiento aislado. |
 
 ```text
@@ -378,11 +378,11 @@ mi-control-de-notas/
 
 ## Pruebas y compilación
 
-| Comando | Función |
-| --- | --- |
-| `npm install` | Instala las dependencias. |
-| `npm run dev` | Inicia el servidor en la interfaz local `127.0.0.1`. |
-| `npm test` | Ejecuta la suite automatizada con Vitest. |
+| Comando         | Función                                                            |
+| --------------- | ------------------------------------------------------------------ |
+| `npm install`   | Instala las dependencias.                                          |
+| `npm run dev`   | Inicia el servidor en la interfaz local `127.0.0.1`.               |
+| `npm test`      | Ejecuta la suite automatizada con Vitest.                          |
 | `npm run build` | Comprueba TypeScript y genera la versión de producción en `dist/`. |
 
 Las pruebas cubren cálculos ponderados, validación de notas y pesos, diferencias entre ceros y vacíos, notas necesarias, clic y doble clic en candados, persistencia, respaldos, ciclo del splash, reintentos, limpieza de temporizadores y comportamiento accesible de los modales.
@@ -451,3 +451,9 @@ Verifica que Node.js esté instalado y disponible en el `PATH`, que hayas ejecut
 
 - [Rediseño Frutiger Aero](./REDISENO.md): sistema visual, archivos modificados y verificaciones del rediseño.
 - [Pantalla de bienvenida](./SPLASH.md): secuencia de inicialización, animaciones, reintento y pruebas.
+
+### Orden estable y tabla consistente
+
+Los cursos tienen una posición explícita y persistente. Las instalaciones nuevas utilizan el orden de la lista inicial; los cursos añadidos se colocan al final. La migración de bases existentes conserva su orden visible, sus notas y sus candados. Los respaldos JSON actuales incluyen la posición y los antiguos siguen siendo compatibles.
+
+La tabla utiliza columnas de dimensiones estables y desplazamiento horizontal interno cuando no cabe, sin desbordar toda la página. Consulta el [diagnóstico y la verificación de orden y diseño](docs/CORRECCION_TABLA_ORDEN.md) para conocer la migración, las resoluciones comprobadas y las consideraciones de actualización en Vercel.

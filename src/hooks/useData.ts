@@ -1,8 +1,8 @@
 ﻿import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "../services/db";
+import { db, getOrderedCourses } from "../services/db";
 export function useData(enabled = true) {
   const courses = useLiveQuery(
-    async () => (enabled ? await db.courses.toArray() : undefined),
+    async () => (enabled ? await getOrderedCourses() : undefined),
     [enabled],
   );
   const settings = useLiveQuery(

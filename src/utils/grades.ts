@@ -1,4 +1,5 @@
 ﻿import type { Backup, Course } from "../types";
+import { withCourseOrder, validOrder } from "./courseOrder";
 export function validGrade(n: number) {
   return (
     Number.isFinite(n) &&
@@ -77,6 +78,7 @@ export function parseBackup(raw: string): Backup {
       !c ||
       typeof c.id !== "string" ||
       !c.id ||
+      (c.order !== undefined && !validOrder(c.order)) ||
       ids.has(c.id) ||
       typeof c.name !== "string" ||
       !c.name.trim() ||
@@ -97,7 +99,7 @@ export function parseBackup(raw: string): Backup {
       );
     ids.add(c.id);
   }
-  return b as Backup;
+  return { ...b, courses: withCourseOrder(b.courses) } as Backup;
 }
 export function csv(courses: Course[]) {
   const rows = [

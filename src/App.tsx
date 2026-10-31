@@ -22,6 +22,7 @@ import { useData } from "./hooks/useData";
 import {
   db,
   newCourse,
+  saveCourse,
   updateGrade,
   lockGrade,
   exportBackup,
@@ -330,8 +331,25 @@ export default function App() {
                 />
               </div>
             </div>
-            <div className="table-scroll">
-              <table>
+            <div
+              className="table-scroll"
+              role="region"
+              aria-label="Notas por curso: tabla con desplazamiento horizontal"
+              tabIndex={0}
+            >
+              <table
+                className="grades-table"
+                aria-label="Notas y ponderaciones por curso"
+              >
+                <colgroup>
+                  <col className="col-course" />
+                  {labels.map((label) => (
+                    <col key={label} className="col-grade" />
+                  ))}
+                  <col className="col-average" />
+                  <col className="col-state" />
+                  <col className="col-actions" />
+                </colgroup>
                 <thead>
                   <tr>
                     <th>CURSO</th>
@@ -356,7 +374,7 @@ export default function App() {
                           ? "Aprobado"
                           : "Desaprobado";
                     return (
-                      <tr key={c.id}>
+                      <tr key={c.id} data-course-id={c.id}>
                         <td>
                           <div className="course-name">
                             <span className={"course-icon color-" + (k % 4)}>
@@ -523,7 +541,7 @@ export default function App() {
               e.preventDefault();
               if (!editor.name.trim() || !validWeights(editor.weights)) return;
               void run(async () => {
-                await db.courses.put({ ...editor, name: editor.name.trim() });
+                await saveCourse({ ...editor, name: editor.name.trim() });
                 setEditor(null);
               });
             }}

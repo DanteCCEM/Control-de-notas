@@ -5,6 +5,7 @@ export interface Grade {
 }
 export interface Course {
   id: string;
+  order: number;
   name: string;
   weights: number[];
   grades: Grade[];

@@ -49,7 +49,7 @@
 }
 body {
   margin: 0;
-  min-width: 320px;
+  min-width: 0;
   isolation: isolate;
   background: url("/aero-landscape.svg") center / cover fixed no-repeat;
 }
@@ -297,6 +297,7 @@ aside {
   box-shadow: 0 0 3px #efffb4;
 }
 .workspace {
+  min-width: 0;
   border: 1px solid #6c9dbb;
   border-radius: 3px 3px 7px 7px;
   background: #f4faffed;
@@ -532,6 +533,7 @@ header strong {
 }
 .panel {
   overflow: hidden;
+  min-width: 0;
 }
 .panel-heading {
   display: flex;
@@ -572,15 +574,31 @@ header strong {
 }
 .table-scroll {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   scrollbar-color: #7eafce #e7f4fb;
 }
-table {
+.grades-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
   text-align: left;
-  min-width: 1030px;
+  min-width: 1100px;
+}
+.grades-table .col-grade {
+  width: 122px;
+}
+.grades-table .col-average {
+  width: 120px;
+}
+.grades-table .col-state {
+  width: 130px;
+}
+.grades-table .col-actions {
+  width: 60px;
 }
 thead {
   background: var(--blue-fill);
@@ -599,13 +617,13 @@ th {
   box-shadow: inset 0 1px 0 #ffffffa8;
 }
 th:first-child {
-  width: 28%;
   padding-left: 20px;
 }
 th:last-child {
   border-right: 0;
 }
 td {
+  height: 96px;
   padding: 13px 10px;
   border-bottom: 1px solid #c5ddeb;
   border-right: 1px solid #cfe3ed55;
@@ -632,10 +650,15 @@ td:last-child {
   display: flex;
   gap: 11px;
   align-items: center;
+  min-width: 0;
+}
+.course-name > div {
+  min-width: 0;
+  flex: 1;
 }
 .course-name strong {
   display: block;
-  max-width: 225px;
+  overflow-wrap: anywhere;
   font-size: 12px;
   font-weight: 600;
   line-height: 1.4;
@@ -724,8 +747,11 @@ td:last-child {
 .grade {
   display: flex;
   align-items: center;
-  width: 95px;
-  height: 36px;
+  width: 99px;
+  height: 39px;
+  flex-shrink: 0;
+  gap: 2px;
+  padding-right: 2px;
   border: 1px solid #93b2c8;
   border-radius: 5px;
   background: var(--input-fill);
@@ -754,7 +780,8 @@ td:last-child {
     0 1px 0 #fff;
 }
 .grade input {
-  width: 58px;
+  width: 0;
+  flex: 1 1 0;
   min-width: 0;
   height: 100%;
   border: 0;
@@ -785,10 +812,11 @@ td:last-child {
 }
 .grade button {
   padding: 0;
-  width: 30px;
-  min-width: 30px;
-  min-height: 28px;
-  height: 28px;
+  width: 32px;
+  min-width: 32px;
+  min-height: 31px;
+  height: 31px;
+  flex: 0 0 32px;
   border-radius: 4px;
   border: 1px solid #86b6d2;
   background: linear-gradient(#f5fdff, #bce9ff 45%, #74c2eb 48%, #c9eeff);
@@ -1605,17 +1633,35 @@ label {
     right: 16px;
     max-width: calc(100% - 32px);
   }
-  .grade {
-    width: 99px;
-    height: 39px;
+}
+@media (max-width: 360px) {
+  aside {
+    flex-wrap: wrap;
   }
-  .grade button {
-    width: 32px;
-    min-width: 32px;
-    height: 31px;
+  .brand {
+    flex-basis: 100%;
+    margin-right: 0;
   }
-  .grade input {
-    width: 60px;
+  .stats {
+    grid-template-columns: 1fr;
+  }
+  header {
+    gap: 8px;
+  }
+  header > span {
+    min-width: 0;
+  }
+  .header-right {
+    flex-shrink: 0;
+  }
+  .page-heading {
+    padding: 16px;
+  }
+  .calculator-card > div {
+    min-width: 0;
+  }
+  .calc-icon {
+    display: none;
   }
 }
 @media (prefers-reduced-transparency: reduce) {
