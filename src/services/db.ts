@@ -1,5 +1,6 @@
-﻿import { validGrade } from "../utils/grades";
+﻿import { validGrade, parseBackup } from "../utils/grades";
 import Dexie, { type Table } from "dexie";
+import type { ScheduleSession } from "../types/schedule";
 import type { Course, Settings, Backup } from "../types";
 import {
   compareCourseOrder,
@@ -9,6 +10,7 @@ import {
 export class NotesDB extends Dexie {
   courses!: Table<Course, string>;
   settings!: Table<Settings, string>;
+  scheduleEntries!: Table<ScheduleSession, string>;
   constructor(name = "MiControlDeNotas") {
     super(name);
     this.version(1).stores({ courses: "id", settings: "id" });
@@ -21,6 +23,11 @@ export class NotesDB extends Dexie {
           await tx.table("courses").update(course.id, { order: course.order });
         }
       });
+    this.version(3).stores({
+      courses: "id,order",
+      settings: "id",
+      scheduleEntries: "id,courseId,day,&[courseId+day+startMinute+endMinute]",
+    });
   }
 }
 export const db = new NotesDB();
@@ -103,16 +110,44 @@ export async function lockGrade(id: string, index: number, locked: boolean) {
   });
 }
 export async function exportBackup(): Promise<Backup> {
-  return db.transaction("r", db.courses, db.settings, async () => ({
-    version: 1,
-    courses: await getOrderedCourses(),
-    settings: (await db.settings.get("main"))!,
-  }));
+  return db.transaction(
+    "r",
+    db.courses,
+    db.settings,
+    db.scheduleEntries,
+    async () => ({
+      version: 2,
+      courses: await getOrderedCourses(),
+      settings: (await db.settings.get("main"))!,
+      scheduleEntries: await db.scheduleEntries.toArray(),
+    }),
+  );
 }
-export async function importBackup(b: Backup) {
-  await db.transaction("rw", db.courses, db.settings, async () => {
-    await db.courses.clear();
-    await db.courses.bulkAdd(withCourseOrder(b.courses));
-    await db.settings.put(b.settings);
-  });
+export async function importBackup(b: Backup, allowOrphanRemoval = false) {
+  b = parseBackup(JSON.stringify(b));
+  await db.transaction(
+    "rw",
+    db.courses,
+    db.settings,
+    db.scheduleEntries,
+    async () => {
+      if (b.version === 2) {
+        await db.scheduleEntries.clear();
+        await db.scheduleEntries.bulkAdd(b.scheduleEntries);
+      } else {
+        const ids = new Set(b.courses.map((c) => c.id));
+        const orphanIds = (await db.scheduleEntries.toArray())
+          .filter((s) => !ids.has(s.courseId))
+          .map((s) => s.id);
+        if (orphanIds.length && !allowOrphanRemoval)
+          throw new Error(
+            "El respaldo deja sesiones sin curso. Confirma su eliminación antes de importar.",
+          );
+        await db.scheduleEntries.bulkDelete(orphanIds);
+      }
+      await db.courses.clear();
+      await db.courses.bulkAdd(withCourseOrder(b.courses));
+      await db.settings.put(b.settings);
+    },
+  );
 }

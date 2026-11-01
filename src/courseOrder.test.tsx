@@ -58,7 +58,7 @@ describe("Orden explícito y migración de IndexedDB", () => {
     expect(after.map((c) => c.order)).toEqual([0, 1, 2]);
     expect(after.map((c) => withoutOrder({ ...c }))).toEqual(before);
     expect(await upgraded.settings.get("main")).toEqual(settings);
-    expect(upgraded.verno).toBe(2);
+    expect(upgraded.verno).toBe(3);
     upgraded.close();
     await upgraded.open();
     expect(await getOrderedCourses(upgraded)).toEqual(after);

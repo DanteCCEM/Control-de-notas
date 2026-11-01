@@ -1,5 +1,7 @@
 ﻿import type { Backup, Course } from "../types";
 import { withCourseOrder, validOrder } from "./courseOrder";
+import { validateSession } from "./schedule";
+
 export function validGrade(n: number) {
   return (
     Number.isFinite(n) &&
@@ -64,7 +66,7 @@ export function needed(
 export function parseBackup(raw: string): Backup {
   const b = JSON.parse(raw);
   if (
-    b?.version !== 1 ||
+    (b?.version !== 1 && b?.version !== 2) ||
     !Array.isArray(b.courses) ||
     !b.settings ||
     b.settings.id !== "main" ||
@@ -98,6 +100,31 @@ export function parseBackup(raw: string): Backup {
         "El respaldo contiene cursos, notas o ponderaciones inválidos.",
       );
     ids.add(c.id);
+  }
+  if (b.version === 2) {
+    if (!Array.isArray(b.scheduleEntries))
+      throw new Error("El respaldo no contiene un horario válido.");
+    const sessionIds = new Set<string>();
+    const slots = new Set<string>();
+    for (const session of b.scheduleEntries) {
+      validateSession(session);
+      const slot = JSON.stringify([
+        session.courseId,
+        session.day,
+        session.startMinute,
+        session.endMinute,
+      ]);
+      if (
+        !ids.has(session.courseId) ||
+        sessionIds.has(session.id) ||
+        slots.has(slot)
+      )
+        throw new Error(
+          "El horario contiene duplicados o referencias a cursos inexistentes.",
+        );
+      sessionIds.add(session.id);
+      slots.add(slot);
+    }
   }
   return { ...b, courses: withCourseOrder(b.courses) } as Backup;
 }

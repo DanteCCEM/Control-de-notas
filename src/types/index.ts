@@ -15,8 +15,12 @@ export interface Settings {
   threshold: number;
   dark: boolean;
 }
-export interface Backup {
-  version: 1;
+interface BackupBase {
   courses: Course[];
   settings: Settings;
 }
+export type Backup = BackupBase &
+  (
+    | { version: 1 }
+    | { version: 2; scheduleEntries: import("./schedule").ScheduleSession[] }
+  );

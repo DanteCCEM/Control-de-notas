@@ -39,6 +39,10 @@ import {
 import { labels, type Course } from "./types";
 import { GradeCell } from "./components/GradeCell";
 import { Modal } from "./components/Modal";
+import { SchedulePage } from "./components/SchedulePage";
+import { useModuleNavigation } from "./hooks/useModuleNavigation";
+import { deleteCourseWithSessions } from "./services/schedule";
+import { AppNavigation } from "./components/AppNavigation";
 import { SplashScreen } from "./components/SplashScreen";
 import { useStartup } from "./hooks/useStartup";
 function download(name: string, data: string, type: string) {
@@ -51,6 +55,7 @@ function download(name: string, data: string, type: string) {
 }
 const fmt = (n: number | null) => (n === null ? "—" : n.toFixed(2));
 export default function App() {
+  const activeModule = useModuleNavigation();
   const startup = useStartup();
   const { courses, settings } = useData(startup.initialized);
   const [notice, setNotice] = useState("");
@@ -108,6 +113,61 @@ export default function App() {
     chosen?.grades
       .map((g, i) => (g.value === null ? i : -1))
       .filter((i) => i >= 0) ?? [];
+  const backupControls = (
+    <div className="tools">
+      <button
+        onClick={() =>
+          void run(async () =>
+            download(
+              "respaldo-notas.json",
+              JSON.stringify(await exportBackup(), null, 2),
+              "application/json",
+            ),
+          )
+        }
+      >
+        <Download size={15} /> JSON
+      </button>
+      <button
+        onClick={() =>
+          download("mis-notas.csv", csv(courses), "text/csv;charset=utf-8")
+        }
+      >
+        <Download size={15} /> CSV
+      </button>
+      <button disabled={busy > 0} onClick={() => file.current?.click()}>
+        <Upload size={15} /> Importar
+      </button>
+      <input
+        hidden
+        ref={file}
+        type="file"
+        accept=".json,application/json"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          if (f)
+            void run(async () => {
+              if (f.size > 5_000_000)
+                throw new Error("El archivo supera 5 MB.");
+              const b = parseBackup(await f.text());
+              const orphanCount =
+                b.version === 1
+                  ? (await db.scheduleEntries.toArray()).filter(
+                      (s) => !b.courses.some((c) => c.id === s.courseId),
+                    ).length
+                  : 0;
+              if (
+                confirm(
+                  `¿Reemplazar todos los datos por ${b.courses.length} cursos del respaldo? ${b.version === 2 ? "También se reemplazará todo el horario con el del respaldo." : "Se conservarán las sesiones cuyos cursos estén en el respaldo."} Se restaurarán los candados. ${orphanCount ? `Se eliminarán ${orphanCount} sesiones que quedarían sin curso. ¿Confirmas también su eliminación?` : ""}`,
+                )
+              )
+                await importBackup(b, orphanCount > 0);
+            });
+        }}
+      />
+    </div>
+  );
   return (
     <div className="shell dashboard-enter">
       <aside>
@@ -119,19 +179,13 @@ export default function App() {
             Mi Control<span className="brand-sub">DE NOTAS</span>
           </span>
         </a>
-        <div className="nav-label">MI ESPACIO ACADÉMICO</div>
-        <a className="nav active" href="#">
-          <GraduationCap size={19} /> Resumen de notas
-        </a>
-        <button
-          className="nav"
-          onClick={() => {
+        <AppNavigation
+          activeModule={activeModule}
+          onOpenCalculator={() => {
             setTarget(String(settings.threshold));
             setCalc(true);
           }}
-        >
-          <Calculator size={19} /> Calculadora
-        </button>
+        />
         <div className="sidebar-bottom">
           <ShieldCheck size={23} />
           <strong>Tus notas, contigo.</strong>
@@ -147,7 +201,9 @@ export default function App() {
         <header>
           <span>
             Mi espacio <span className="slash">/</span>{" "}
-            <strong>Resumen académico</strong>
+            <strong>
+              {activeModule === "schedule" ? "Mi Horario" : "Resumen académico"}
+            </strong>
           </span>
           <div className="header-right">
             <span className="saved">
@@ -168,346 +224,306 @@ export default function App() {
           </div>
         </header>
         <main>
-          <div className="page-heading">
-            <div>
-              <div className="eyebrow">CADA EVALUACIÓN CUENTA</div>
-              <h1>
-                Tu esfuerzo, en perspectiva<span>.</span>
-              </h1>
-              <p>Organiza tus notas y ten claro tu próximo objetivo.</p>
-            </div>
-            <button
-              className="primary"
-              onClick={() => setEditor(newCourse(""))}
-            >
-              <Plus size={17} /> Agregar curso
-            </button>
-          </div>
-          <section className="stats" aria-label="Estadísticas">
-            <article className="stat featured">
-              <div>
-                Promedio general <GraduationCap size={20} />
-              </div>
-              <strong>
-                {fmt(general)}
-                <small> / 20</small>
-              </strong>
-              <p>
-                {averages.length === 0
-                  ? "Aún no hay notas"
-                  : complete.length === averages.length
-                    ? "Definitivo · cursos con notas"
-                    : "Provisional · cursos con notas"}
-              </p>
-              <small>
-                Definitivos:{" "}
-                {complete.length
-                  ? fmt(
-                      complete.reduce((s, r) => s + r.average!, 0) /
-                        complete.length,
-                    )
-                  : "—"}{" "}
-                · media simple
-              </small>
-            </article>
-            <article className="stat stat-approved">
-              <div>
-                Cursos aprobados <CheckCheck size={20} />
-              </div>
-              <strong>{passed.toString().padStart(2, "0")}</strong>
-              <p>
-                de {courses.length} cursos · mínimo {settings.threshold}
-              </p>
-              <div className="mini">
-                <i
-                  style={{
-                    width: `${courses.length ? (passed / courses.length) * 100 : 0}%`,
-                  }}
-                />
-              </div>
-            </article>
-            <article className="stat stat-failed">
-              <div>
-                Cursos desaprobados <CircleX size={20} />
-              </div>
-              <strong>{complete.length - passed}</strong>
-              <p>Resultados definitivos</p>
-            </article>
-            <article className="stat stat-pending">
-              <div>
-                Cursos pendientes <Clock3 size={20} />
-              </div>
-              <strong>
-                {courses.length - complete.length}
-                <small> cursos</small>
-              </strong>
-              <p>Con evaluaciones por registrar</p>
-            </article>
-            <article className="stat stat-registered">
-              <div>
-                Notas registradas <BookOpen size={20} />
-              </div>
-              <strong>
-                {registered}
-                <small> / {courses.length * 4}</small>
-              </strong>
-              <p>Tu progreso, paso a paso</p>
-              <div className="mini">
-                <i
-                  style={{
-                    width: `${courses.length ? (registered / (courses.length * 4)) * 100 : 0}%`,
-                  }}
-                />
-              </div>
-            </article>
-            <article className="stat stat-remaining">
-              <div>
-                Notas pendientes <Pencil size={20} />
-              </div>
-              <strong>{courses.length * 4 - registered}</strong>
-              <p>Próximas oportunidades</p>
-            </article>
-          </section>
-          <section className="panel">
-            <div className="panel-heading">
-              <div>
-                <h2>
-                  Mis cursos <span className="count">{courses.length}</span>
-                </h2>
-                <p>Tu avance académico, evaluación por evaluación.</p>
-              </div>
-              <div className="tools">
-                <button
-                  onClick={() =>
-                    void run(async () =>
-                      download(
-                        "respaldo-notas.json",
-                        JSON.stringify(await exportBackup(), null, 2),
-                        "application/json",
-                      ),
-                    )
-                  }
-                >
-                  <Download size={15} /> JSON
-                </button>
-                <button
-                  onClick={() =>
-                    download(
-                      "mis-notas.csv",
-                      csv(courses),
-                      "text/csv;charset=utf-8",
-                    )
-                  }
-                >
-                  <Download size={15} /> CSV
-                </button>
-                <button
-                  disabled={busy > 0}
-                  onClick={() => file.current?.click()}
-                >
-                  <Upload size={15} /> Importar
-                </button>
-                <input
-                  hidden
-                  ref={file}
-                  type="file"
-                  accept=".json,application/json"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    e.target.value = "";
-                    if (f)
-                      void run(async () => {
-                        if (f.size > 5_000_000)
-                          throw new Error("El archivo supera 5 MB.");
-                        const b = parseBackup(await f.text());
-                        if (
-                          confirm(
-                            `¿Reemplazar todos los datos por ${b.courses.length} cursos del respaldo? Se restaurarán también los candados.`,
-                          )
-                        )
-                          await importBackup(b);
-                      });
-                  }}
-                />
-              </div>
-            </div>
-            <div
-              className="table-scroll"
-              role="region"
-              aria-label="Notas por curso: tabla con desplazamiento horizontal"
-              tabIndex={0}
-            >
-              <table
-                className="grades-table"
-                aria-label="Notas y ponderaciones por curso"
-              >
-                <colgroup>
-                  <col className="col-course" />
-                  {labels.map((label) => (
-                    <col key={label} className="col-grade" />
-                  ))}
-                  <col className="col-average" />
-                  <col className="col-state" />
-                  <col className="col-actions" />
-                </colgroup>
-                <thead>
-                  <tr>
-                    <th>CURSO</th>
-                    {labels.map((l) => (
-                      <th key={l}>{l.toUpperCase()}</th>
-                    ))}
-                    <th>PROMEDIO</th>
-                    <th>ESTADO</th>
-                    <th>
-                      <span className="sr-only">Acciones</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {courses.map((c, k) => {
-                    const r = results[k];
-                    const state = !r.count
-                      ? "Sin notas"
-                      : !r.complete
-                        ? "Pendiente"
-                        : r.average !== null && r.average >= settings.threshold
-                          ? "Aprobado"
-                          : "Desaprobado";
-                    return (
-                      <tr key={c.id} data-course-id={c.id}>
-                        <td>
-                          <div className="course-name">
-                            <span className={"course-icon color-" + (k % 4)}>
-                              <BookOpen size={17} />
-                            </span>
-                            <div>
-                              <strong>{c.name}</strong>
-                              <div className="course-progress">
-                                <div>
-                                  <i style={{ width: `${r.count * 25}%` }} />
-                                </div>
-                                <span>{r.count}/4 evaluaciones</span>
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        {c.grades.map((g, i) => (
-                          <td key={i}>
-                            <div className="weight">{c.weights[i]}%</div>
-                            <GradeCell
-                              grade={g}
-                              label={`${c.name}, ${labels[i]}`}
-                              onValue={(n) =>
-                                run(() => updateGrade(c.id, i, n))
-                              }
-                              onLock={(locked) =>
-                                run(() => lockGrade(c.id, i, locked))
-                              }
-                            />
-                          </td>
-                        ))}
-                        <td>
-                          <strong className="average">{fmt(r.average)}</strong>
-                          <small className="average-label">
-                            {r.complete
-                              ? "Definitivo"
-                              : r.count
-                                ? "Provisional"
-                                : "Sin registrar"}
-                          </small>
-                          {r.count > 0 && !r.complete && (
-                            <small className="average-label">
-                              Acum. {fmt(r.accumulated)}
-                            </small>
-                          )}
-                        </td>
-                        <td>
-                          <span
-                            className={
-                              "badge " +
-                              (state === "Aprobado"
-                                ? "green"
-                                : state === "Desaprobado"
-                                  ? "red"
-                                  : state === "Pendiente"
-                                    ? "yellow"
-                                    : "gray")
-                            }
-                          >
-                            <span className="dot" />
-                            {state}
-                          </span>
-                        </td>
-                        <td>
-                          <button
-                            className="icon"
-                            aria-label={"Editar " + c.name}
-                            onClick={() => setEditor(structuredClone(c))}
-                          >
-                            <Pencil size={15} />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              {!courses.length && (
-                <div className="empty">
-                  Tu siguiente etapa empieza aquí. Agrega tu primer curso.
+          {activeModule === "schedule" ? (
+            <SchedulePage courses={courses} backupActions={backupControls} />
+          ) : (
+            <>
+              <div className="page-heading">
+                <div>
+                  <div className="eyebrow">CADA EVALUACIÓN CUENTA</div>
+                  <h1>
+                    Tu esfuerzo, en perspectiva<span>.</span>
+                  </h1>
+                  <p>Organiza tus notas y ten claro tu próximo objetivo.</p>
                 </div>
-              )}
-            </div>
-            <div className="table-footer">
-              <span>
-                <LockKeyholeHint /> Un clic para bloquear · doble clic para
-                desbloquear
-              </span>
-              <span>Escala 0–20 · hasta 2 decimales</span>
-            </div>
-          </section>
-          <div className="bottom-grid">
-            <section className="calculator-card">
-              <div className="calc-icon">
-                <Calculator size={25} />
-              </div>
-              <div>
-                <div className="eyebrow">PLANIFICA TU SIGUIENTE PASO</div>
-                <h2>¿Cuánto necesitas para aprobar?</h2>
-                <p>Explora escenarios sin cambiar tus notas registradas.</p>
                 <button
-                  onClick={() => {
-                    setTarget(String(settings.threshold));
-                    setCalc(true);
-                  }}
+                  className="primary"
+                  onClick={() => setEditor(newCourse(""))}
                 >
-                  Abrir calculadora <ArrowUpRight size={16} />
+                  <Plus size={17} /> Agregar curso
                 </button>
               </div>
-            </section>
-            <section className="settings-card">
-              <h3>Tu meta de aprobación</h3>
-              <p>Se aplica a los resultados definitivos.</p>
-              <label>
-                Nota mínima{" "}
-                <input
-                  aria-label="Nota mínima aprobatoria"
-                  type="number"
-                  min="0"
-                  max="20"
-                  step="0.01"
-                  value={settings.threshold}
-                  onChange={(e) => {
-                    const n = Number(e.target.value);
-                    if (e.target.value !== "" && validGrade(n))
-                      void run(() =>
-                        db.settings.update("main", { threshold: n }),
-                      );
-                  }}
-                />
-              </label>
-            </section>
-          </div>
+              <section className="stats" aria-label="Estadísticas">
+                <article className="stat featured">
+                  <div>
+                    Promedio general <GraduationCap size={20} />
+                  </div>
+                  <strong>
+                    {fmt(general)}
+                    <small> / 20</small>
+                  </strong>
+                  <p>
+                    {averages.length === 0
+                      ? "Aún no hay notas"
+                      : complete.length === averages.length
+                        ? "Definitivo · cursos con notas"
+                        : "Provisional · cursos con notas"}
+                  </p>
+                  <small>
+                    Definitivos:{" "}
+                    {complete.length
+                      ? fmt(
+                          complete.reduce((s, r) => s + r.average!, 0) /
+                            complete.length,
+                        )
+                      : "—"}{" "}
+                    · media simple
+                  </small>
+                </article>
+                <article className="stat stat-approved">
+                  <div>
+                    Cursos aprobados <CheckCheck size={20} />
+                  </div>
+                  <strong>{passed.toString().padStart(2, "0")}</strong>
+                  <p>
+                    de {courses.length} cursos · mínimo {settings.threshold}
+                  </p>
+                  <div className="mini">
+                    <i
+                      style={{
+                        width: `${courses.length ? (passed / courses.length) * 100 : 0}%`,
+                      }}
+                    />
+                  </div>
+                </article>
+                <article className="stat stat-failed">
+                  <div>
+                    Cursos desaprobados <CircleX size={20} />
+                  </div>
+                  <strong>{complete.length - passed}</strong>
+                  <p>Resultados definitivos</p>
+                </article>
+                <article className="stat stat-pending">
+                  <div>
+                    Cursos pendientes <Clock3 size={20} />
+                  </div>
+                  <strong>
+                    {courses.length - complete.length}
+                    <small> cursos</small>
+                  </strong>
+                  <p>Con evaluaciones por registrar</p>
+                </article>
+                <article className="stat stat-registered">
+                  <div>
+                    Notas registradas <BookOpen size={20} />
+                  </div>
+                  <strong>
+                    {registered}
+                    <small> / {courses.length * 4}</small>
+                  </strong>
+                  <p>Tu progreso, paso a paso</p>
+                  <div className="mini">
+                    <i
+                      style={{
+                        width: `${courses.length ? (registered / (courses.length * 4)) * 100 : 0}%`,
+                      }}
+                    />
+                  </div>
+                </article>
+                <article className="stat stat-remaining">
+                  <div>
+                    Notas pendientes <Pencil size={20} />
+                  </div>
+                  <strong>{courses.length * 4 - registered}</strong>
+                  <p>Próximas oportunidades</p>
+                </article>
+              </section>
+              <section className="panel">
+                <div className="panel-heading">
+                  <div>
+                    <h2>
+                      Mis cursos <span className="count">{courses.length}</span>
+                    </h2>
+                    <p>Tu avance académico, evaluación por evaluación.</p>
+                  </div>
+                  {backupControls}
+                </div>
+                <div
+                  className="table-scroll"
+                  role="region"
+                  aria-label="Notas por curso: tabla con desplazamiento horizontal"
+                  tabIndex={0}
+                >
+                  <table
+                    className="grades-table"
+                    aria-label="Notas y ponderaciones por curso"
+                  >
+                    <colgroup>
+                      <col className="col-course" />
+                      {labels.map((label) => (
+                        <col key={label} className="col-grade" />
+                      ))}
+                      <col className="col-average" />
+                      <col className="col-state" />
+                      <col className="col-actions" />
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th>CURSO</th>
+                        {labels.map((l) => (
+                          <th key={l}>{l.toUpperCase()}</th>
+                        ))}
+                        <th>PROMEDIO</th>
+                        <th>ESTADO</th>
+                        <th>
+                          <span className="sr-only">Acciones</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {courses.map((c, k) => {
+                        const r = results[k];
+                        const state = !r.count
+                          ? "Sin notas"
+                          : !r.complete
+                            ? "Pendiente"
+                            : r.average !== null &&
+                                r.average >= settings.threshold
+                              ? "Aprobado"
+                              : "Desaprobado";
+                        return (
+                          <tr key={c.id} data-course-id={c.id}>
+                            <td>
+                              <div className="course-name">
+                                <span
+                                  className={"course-icon color-" + (k % 4)}
+                                >
+                                  <BookOpen size={17} />
+                                </span>
+                                <div>
+                                  <strong>{c.name}</strong>
+                                  <div className="course-progress">
+                                    <div>
+                                      <i
+                                        style={{ width: `${r.count * 25}%` }}
+                                      />
+                                    </div>
+                                    <span>{r.count}/4 evaluaciones</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            {c.grades.map((g, i) => (
+                              <td key={i}>
+                                <div className="weight">{c.weights[i]}%</div>
+                                <GradeCell
+                                  grade={g}
+                                  label={`${c.name}, ${labels[i]}`}
+                                  onValue={(n) =>
+                                    run(() => updateGrade(c.id, i, n))
+                                  }
+                                  onLock={(locked) =>
+                                    run(() => lockGrade(c.id, i, locked))
+                                  }
+                                />
+                              </td>
+                            ))}
+                            <td>
+                              <strong className="average">
+                                {fmt(r.average)}
+                              </strong>
+                              <small className="average-label">
+                                {r.complete
+                                  ? "Definitivo"
+                                  : r.count
+                                    ? "Provisional"
+                                    : "Sin registrar"}
+                              </small>
+                              {r.count > 0 && !r.complete && (
+                                <small className="average-label">
+                                  Acum. {fmt(r.accumulated)}
+                                </small>
+                              )}
+                            </td>
+                            <td>
+                              <span
+                                className={
+                                  "badge " +
+                                  (state === "Aprobado"
+                                    ? "green"
+                                    : state === "Desaprobado"
+                                      ? "red"
+                                      : state === "Pendiente"
+                                        ? "yellow"
+                                        : "gray")
+                                }
+                              >
+                                <span className="dot" />
+                                {state}
+                              </span>
+                            </td>
+                            <td>
+                              <button
+                                className="icon"
+                                aria-label={"Editar " + c.name}
+                                onClick={() => setEditor(structuredClone(c))}
+                              >
+                                <Pencil size={15} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  {!courses.length && (
+                    <div className="empty">
+                      Tu siguiente etapa empieza aquí. Agrega tu primer curso.
+                    </div>
+                  )}
+                </div>
+                <div className="table-footer">
+                  <span>
+                    <LockKeyholeHint /> Un clic para bloquear · doble clic para
+                    desbloquear
+                  </span>
+                  <span>Escala 0–20 · hasta 2 decimales</span>
+                </div>
+              </section>
+              <div className="bottom-grid">
+                <section className="calculator-card">
+                  <div className="calc-icon">
+                    <Calculator size={25} />
+                  </div>
+                  <div>
+                    <div className="eyebrow">PLANIFICA TU SIGUIENTE PASO</div>
+                    <h2>¿Cuánto necesitas para aprobar?</h2>
+                    <p>Explora escenarios sin cambiar tus notas registradas.</p>
+                    <button
+                      onClick={() => {
+                        setTarget(String(settings.threshold));
+                        setCalc(true);
+                      }}
+                    >
+                      Abrir calculadora <ArrowUpRight size={16} />
+                    </button>
+                  </div>
+                </section>
+                <section className="settings-card">
+                  <h3>Tu meta de aprobación</h3>
+                  <p>Se aplica a los resultados definitivos.</p>
+                  <label>
+                    Nota mínima{" "}
+                    <input
+                      aria-label="Nota mínima aprobatoria"
+                      type="number"
+                      min="0"
+                      max="20"
+                      step="0.01"
+                      value={settings.threshold}
+                      onChange={(e) => {
+                        const n = Number(e.target.value);
+                        if (e.target.value !== "" && validGrade(n))
+                          void run(() =>
+                            db.settings.update("main", { threshold: n }),
+                          );
+                      }}
+                    />
+                  </label>
+                </section>
+              </div>
+            </>
+          )}
           <footer>
             Mi Control de Notas{" "}
             <span>Hecho para enfocarte en lo que viene.</span>
@@ -614,15 +630,22 @@ export default function App() {
               </button>
               <button
                 className="error"
-                onClick={() => {
-                  if (
-                    confirm("¿Eliminar este curso y sus notas permanentemente?")
-                  )
-                    void run(async () => {
-                      await db.courses.delete(editor.id);
-                      setEditor(null);
-                    });
-                }}
+                onClick={() =>
+                  void run(async () => {
+                    const count = await db.scheduleEntries
+                      .where("courseId")
+                      .equals(editor.id)
+                      .count();
+                    if (
+                      !confirm(
+                        `¿Eliminar este curso y sus notas permanentemente?${count ? ` También se eliminarán sus ${count} sesiones de horario. No se pueden deshacer estos cambios.` : ""}`,
+                      )
+                    )
+                      return;
+                    await deleteCourseWithSessions(editor.id, count > 0);
+                    setEditor(null);
+                  })
+                }
               >
                 <Trash2 size={15} /> Eliminar curso
               </button>

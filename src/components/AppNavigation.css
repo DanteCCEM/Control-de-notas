@@ -1,0 +1,7 @@
+﻿/* Reuse existing Aero controls and the parent toolbar's responsive spacing. */
+.app-navigation {
+  display: flex;
+  align-items: center;
+  gap: inherit;
+  min-width: 0;
+}

@@ -300,10 +300,10 @@ Puedes adaptar los cursos y sus pesos desde la interfaz. El arranque no sobrescr
 
 ## Respaldos e intercambio de datos
 
-| Formato | Contenido                                                                           | Uso                                                          |
-| ------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| JSON    | Cursos, identificadores, notas, ponderaciones, candados, tema y mínimo aprobatorio. | Respaldo completo y restauración en otro navegador o equipo. |
-| CSV     | Nombres de cursos, notas, pesos, promedio disponible, tipo de promedio y acumulado. | Consulta y análisis en Excel u otras hojas de cálculo.       |
+| Formato | Contenido                                                                                                          | Uso                                                          |
+| ------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
+| JSON    | Cursos, identificadores, notas, ponderaciones, candados, tema, mínimo aprobatorio y sesiones de horario (JSON v2). | Respaldo completo y restauración en otro navegador o equipo. |
+| CSV     | Nombres de cursos, notas, pesos, promedio disponible, tipo de promedio y acumulado.                                | Consulta y análisis en Excel u otras hojas de cálculo.       |
 
 ### Exportar e importar JSON
 
@@ -457,3 +457,26 @@ Verifica que Node.js esté instalado y disponible en el `PATH`, que hayas ejecut
 Los cursos tienen una posición explícita y persistente. Las instalaciones nuevas utilizan el orden de la lista inicial; los cursos añadidos se colocan al final. La migración de bases existentes conserva su orden visible, sus notas y sus candados. Los respaldos JSON actuales incluyen la posición y los antiguos siguen siendo compatibles.
 
 La tabla utiliza columnas de dimensiones estables y desplazamiento horizontal interno cuando no cabe, sin desbordar toda la página. Consulta el [diagnóstico y la verificación de orden y diseño](docs/CORRECCION_TABLA_ORDEN.md) para conocer la migración, las resoluciones comprobadas y las consideraciones de actualización en Vercel.
+
+## Preparación de módulos académicos — etapa 1
+
+En la etapa 1 se separó la navegación de Resumen y Calculadora en un componente reutilizable y se prepararon los contratos de los nuevos módulos. Mi Horario ya está implementado en la etapa 2; Pomodoro y Apuntes siguen pendientes. Las relaciones utilizan el ID estable de cada curso.
+
+La etapa 1 no añadió tablas, migraciones ni cambios al formato de respaldos; la etapa 2 incorpora horarios y el respaldo ampliado. Consulta la [arquitectura y estrategia de integración](docs/ARQUITECTURA_MODULOS_ETAPA_1.md) para conocer los contratos, el plan de persistencia incremental y los límites de funcionamiento offline.
+
+## Mi Horario — módulo universitario
+
+Ya puedes registrar y administrar sesiones semanales vinculadas a tus cursos desde **Mi Horario**.
+
+- Cuadrícula de lunes a domingo con horas verticales, rango visible y navegación semanal.
+- Vista diaria con tarjetas en móvil y tablet pequeña.
+- Alta en varios días, edición, eliminación confirmada y colores por curso.
+- Aula, docente, modalidad, enlace de videoconferencia y observaciones.
+- Duplicados bloqueados y advertencias de solapamiento que requieren aceptación explícita.
+- Próxima clase o clase actual calculada con la hora local del dispositivo.
+- Sesiones persistentes en IndexedDB v3 y respaldos completos JSON v2; importación compatible con JSON v1.
+- Eliminación de cursos y sus sesiones en una transacción, previa confirmación del número de clases afectadas.
+
+El CSV sigue exportando las notas. Las sesiones son recurrentes cada semana y deben empezar y terminar el mismo día. Pomodoro y Apuntes permanecen pendientes.
+
+Consulta [Mi Horario: uso, persistencia y pruebas](docs/HORARIO_ETAPA_2.md) para conocer la migración, los respaldos y las verificaciones realizadas.

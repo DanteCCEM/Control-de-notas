@@ -144,7 +144,7 @@ try {
       `new Promise((resolve,reject)=>{const request=indexedDB.open('MiControlDeNotas');request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result,tx=db.transaction(['courses','settings'],'readonly');const records=tx.objectStore('courses').getAll(),config=tx.objectStore('settings').get('main');tx.oncomplete=()=>{const result={version:db.version,courses:records.result,settings:config.result};db.close();resolve(result);};};})`,
     );
   const migrated = await read();
-  assert.equal(migrated.version, 20);
+  assert.equal(migrated.version, 30);
   assert.deepEqual(migrated.settings, settings);
   const expected = [...fixture].sort((a, b) => (a.id < b.id ? -1 : 1));
   assert.deepEqual(
