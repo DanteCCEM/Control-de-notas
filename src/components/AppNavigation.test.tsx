@@ -17,16 +17,16 @@ import userEvent from "@testing-library/user-event";
 afterEach(cleanup);
 
 it("mantiene Resumen y Calculadora sin publicar los módulos previstos", () => {
-  render(<AppNavigation onOpenCalculator={() => {}} />);
+  render(<AppNavigation activeModule="grades" onOpenCalculator={() => {}} />);
   const navigation = screen.getByRole("navigation", {
     name: "Navegación académica",
   });
   const summary = within(navigation).getByRole("link", {
     name: "Resumen de notas",
   });
-  expect(summary.getAttribute("href")).toBe("#");
+  expect(summary.getAttribute("href")).toBe("#notas");
   expect(summary.getAttribute("aria-current")).toBe("page");
-  expect(within(navigation).getAllByRole("link")).toHaveLength(2);
+  expect(within(navigation).getAllByRole("link")).toHaveLength(4);
   expect(within(navigation).getAllByRole("button")).toHaveLength(1);
   for (const label of ["Temporizador Pomodoro", "Apuntes por curso"])
     expect(within(navigation).queryByText(label)).toBeNull();
@@ -36,6 +36,8 @@ it("la acción de calculadora conserva su callback y su acceso por teclado", asy
   const { rerender } = render(<AppNavigation onOpenCalculator={open} />);
   const user = userEvent.setup();
   const calculator = screen.getByRole("button", { name: "Calculadora" });
+  await user.tab();
+  await user.tab();
   await user.tab();
   await user.tab();
   await user.tab();
@@ -55,10 +57,11 @@ it("el registro reserva identificadores únicos y no asigna rutas a módulos pen
   expect(getAvailableAcademicModules().map((m) => m.id)).toEqual([
     "grades",
     "schedule",
+    "settings",
   ]);
   expect(
     academicModules.filter((m) => m.status === "planned").map((m) => m.id),
-  ).toEqual(["pomodoro", "notes"]);
+  ).toEqual(["pomodoro", "notes", "account"]);
   for (const module of academicModules.filter((m) => m.status === "planned"))
     expect("href" in module).toBe(false);
 });

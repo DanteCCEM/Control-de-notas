@@ -114,19 +114,7 @@ export function remainingTime(ms: number) {
     .filter(Boolean)
     .join(" ");
 }
-export function courseColors(id: string) {
-  const colors = [
-    ["#1675ac", "#e2f5ff"],
-    ["#367d38", "#ebf9de"],
-    ["#8d5ca3", "#f5eaff"],
-    ["#a56b1c", "#fff3d9"],
-    ["#ae4f63", "#ffedf2"],
-    ["#1b817a", "#dff8f4"],
-  ];
-  let hash = 0;
-  for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-  return colors[hash % colors.length];
-}
+export { courseColors } from "./courseColors";
 export function layoutSessions(
   sessions: readonly ScheduleSession[],
   start: number,

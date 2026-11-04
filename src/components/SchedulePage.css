@@ -600,3 +600,8 @@ button.class-block {
     max-width: calc(100% - 30px);
   }
 }
+
+/* Pale course surfaces use fixed dark text in both themes. */
+.class-block, .daily-session { color: #153c57; text-shadow: none; }
+.dark .daily-session { color: #153c57; }
+.daily-session .meeting-link, .dark .daily-session .meeting-link { color: #154d75; }

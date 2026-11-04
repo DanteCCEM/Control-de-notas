@@ -1,8 +1,8 @@
-﻿import { useEffect, useState } from "react";
-import type { AcademicModuleId } from "../types/modules";
-export function useModuleNavigation(): AcademicModuleId {
-  const read = (): AcademicModuleId =>
-    location.hash === "#horario" ? "schedule" : "grades";
+import { useEffect, useState } from "react";
+import type { AppPageId } from "../types/modules";
+import { getAvailableAcademicModules } from "../modules/registry";
+export function useModuleNavigation(): AppPageId {
+  const read = (): AppPageId => getAvailableAcademicModules().find(module => module.href === location.hash)?.id ?? "home";
   const [active, setActive] = useState(read);
   useEffect(() => {
     const update = () => setActive(read());

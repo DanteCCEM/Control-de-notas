@@ -1,8 +1,9 @@
 ﻿import type { Course } from "./index";
 
 // Alias the existing key; this does not create or replace course identifiers.
+export type AppPageId = AcademicModuleId | "home";
 export type CourseId = Course["id"];
-export type AcademicModuleId = "grades" | "schedule" | "pomodoro" | "notes";
+export type AcademicModuleId = "grades" | "schedule" | "pomodoro" | "notes" | "account" | "settings";
 
 /** Shared relation for future schedule entries and course notes. */
 export interface CourseLinkedEntity {

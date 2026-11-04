@@ -1704,3 +1704,28 @@ label {
     display: none;
   }
 }
+
+/* Gestures start only on the handle. */
+.course-order-controls { display: flex; flex-direction: column; flex-shrink: 0; align-items: center; gap: 3px; }
+.course-order-controls button { display: inline-flex; align-items: center; justify-content: center; padding: 2px; min-width: 30px; min-height: 28px; }
+.course-order-controls .course-drag-handle { touch-action: none; cursor: grab; min-height: 36px; user-select: none; }
+.course-order-controls .course-drag-handle:active { cursor: grabbing; }
+.course-order-arrows { display: flex; gap: 2px; }
+.course-order-controls button:focus-visible { outline: 3px solid #168ac0; outline-offset: 2px; }
+.grades-table .course-dragging td { background: #69c7ed44; opacity: .75; }
+.grades-table td { transition: background .15s, box-shadow .15s, opacity .15s; }
+.grades-table .course-drop-before td { box-shadow: inset 0 3px #168ac0; }
+.grades-table .course-drop-after td { box-shadow: inset 0 -3px #168ac0; }
+.reorder-status { padding: 10px 16px; margin: 0 auto; text-align: center; background: var(--panel-fill); color: var(--text); border-radius: 8px; }
+@media (pointer: coarse) { .course-order-controls button { min-width: 44px; min-height: 44px; } .course-order-arrows { flex-direction: column; } }
+@media (prefers-reduced-motion: reduce) { .grades-table td { transition: none; } }
+
+.course-color-badge { display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; width: 34px; height: 39px; flex-shrink: 0; border: 1px solid #718a9b; border-left: 7px solid; border-radius: 5px 9px 9px 5px; color: #153c57; box-shadow: inset 0 2px 3px #fff9; margin-right: 4px; }
+.course-color-picker { border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin: 16px 0; min-width: 0; }
+.course-color-picker legend { padding: 0 6px; font-weight: 600; }
+.course-color-palette { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.course-color-palette button { min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+.course-color-palette button[aria-pressed=true] { outline: 2px solid var(--text); outline-offset: 2px; }
+.course-color-swatch { display: inline-block; width: 24px; height: 24px; border: 1px solid #718a9b; border-radius: 50%; }
+.course-color-picker input[type=color] { width: 72px; height: 44px; padding: 4px; cursor: pointer; }
+.course-color-preview { color: #153c57; border: 1px solid #718a9b; border-left: 7px solid; border-radius: 6px; padding: 12px; text-shadow: none; }

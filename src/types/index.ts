@@ -7,6 +7,7 @@ export interface Course {
   id: string;
   order: number;
   name: string;
+  color?: string;
   weights: number[];
   grades: Grade[];
 }

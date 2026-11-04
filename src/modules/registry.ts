@@ -9,7 +9,7 @@ export const academicModules: readonly AcademicModuleDefinition[] = [
     id: "grades",
     label: "Resumen de notas",
     status: "available",
-    href: "#",
+    href: "#notas",
     courseLink: "required",
   },
   {
@@ -31,6 +31,8 @@ export const academicModules: readonly AcademicModuleDefinition[] = [
     status: "planned",
     courseLink: "required",
   },
+  { id: "account", label: "Mi Cuenta", status: "planned", courseLink: "optional" },
+  { id: "settings", label: "Configuración", status: "available", href: "#configuracion", courseLink: "optional" },
 ];
 
 export function getAvailableAcademicModules(): AvailableAcademicModule[] {

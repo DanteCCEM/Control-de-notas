@@ -14,6 +14,7 @@ import {
   importBackup,
   updateGrade,
   lockGrade,
+  moveCourse,
 } from "./services/db";
 import { parseBackup } from "./utils/grades";
 import { compareCourseOrder, withCourseOrder } from "./utils/courseOrder";
@@ -29,6 +30,26 @@ function withoutOrder<T extends { order?: number }>(c: T) {
   return payload;
 }
 describe("Orden explícito y migración de IndexedDB", () => {
+  it("reordena varias veces, persiste al reabrir y solo modifica order", async () => {
+    const database = new NotesDB(databaseName());
+    databases.push(database);
+    const courses = ["A", "B", "C", "D"].map((name, order) => ({ ...newCourse(name), order }));
+    courses[0].grades[0] = { value: 17.25, locked: true };
+    await database.courses.bulkAdd(courses);
+    await database.settings.put(defaults);
+    await moveCourse(courses[0].id, courses[2].id, database);
+    expect((await getOrderedCourses(database)).map(c => c.name)).toEqual(["B", "C", "A", "D"]);
+    await moveCourse(courses[3].id, courses[1].id, database);
+    const after = await getOrderedCourses(database);
+    expect(after.map(c => c.name)).toEqual(["D", "B", "C", "A"]);
+    for (const original of courses) expect(withoutOrder((await database.courses.get(original.id))!)).toEqual(withoutOrder(original));
+    expect(await database.settings.get("main")).toEqual(defaults);
+    database.close();
+    await database.open();
+    expect(await getOrderedCourses(database)).toEqual(after);
+    await expect(moveCourse("missing", courses[0].id, database)).rejects.toThrow();
+    expect(await getOrderedCourses(database)).toEqual(after);
+  });
   it("migra v1 conservando su orden visible y todos los datos salvo el nuevo campo", async () => {
     const name = databaseName();
     const legacy = new Dexie(name);

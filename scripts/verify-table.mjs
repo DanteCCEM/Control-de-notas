@@ -136,7 +136,7 @@ try {
   await evaluate(
     `new Promise((resolve,reject)=>{const request=indexedDB.open('MiControlDeNotas',10);request.onupgradeneeded=()=>{request.result.createObjectStore('courses',{keyPath:'id'});request.result.createObjectStore('settings',{keyPath:'id'});};request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result;const tx=db.transaction(['courses','settings'],'readwrite');for(const c of ${JSON.stringify(fixture)})tx.objectStore('courses').put(c);tx.objectStore('settings').put(${JSON.stringify(settings)});tx.oncomplete=()=>{db.close();resolve(true);};tx.onerror=()=>reject(tx.error);};})`,
   );
-  await call("Page.navigate", { url: base + "/" });
+  await call("Page.navigate", { url: base + "/#notas" });
   await waitFor('document.querySelectorAll("tbody tr").length===6');
   await pause(450);
   const read = () =>
@@ -234,6 +234,69 @@ try {
     ),
     expected.map((c) => c.id),
   );
+  // Stage 1 regression checks run only against this disposable profile.
+  await call("Emulation.setDeviceMetricsOverride", { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
+  await evaluate('location.hash="#"');
+  await waitFor('!!document.querySelector(".home-page")');
+  assert.equal(await evaluate('document.querySelector("header strong").textContent'), "Inicio");
+  assert.equal(await evaluate('document.querySelectorAll(".home-module.planned").length'), 3);
+  assert.equal(await evaluate('document.querySelectorAll(".home-module.planned a,.home-module.planned button").length'), 0);
+  assert.equal(await evaluate('document.querySelectorAll("a.home-module").length'), 3);
+  await evaluate(`document.querySelector('a.home-module[href="#configuracion"]').click()`);
+  await waitFor('!!document.querySelector(".home-settings")');
+  assert.equal(await evaluate('document.querySelector("header strong").textContent'), "Configuración");
+  await evaluate('document.querySelector(".home-back").click()');
+  await waitFor('!!document.querySelector(".home-page")');
+  await evaluate(`document.querySelector('a.home-module[href="#notas"]').click()`);
+  await waitFor('document.querySelectorAll("tbody tr").length===6');
+  await evaluate('document.querySelectorAll(".course-order-arrows button")[1].click()');
+  await waitFor(`document.querySelector("tbody tr").dataset.courseId===${JSON.stringify(expected[1].id)}`);
+  const moved = await read();
+  assert.deepEqual(moved.courses.map(({ order, ...course }) => course), migrated.courses.map(({ order, ...course }) => course));
+  await evaluate('document.querySelector("tbody tr .icon").click()');
+  await waitFor('!!document.querySelector(".course-color-picker")');
+  await evaluate('document.querySelector("button[aria-label=Lavanda]").click()');
+  await waitFor('document.querySelector("button[aria-label=Lavanda]").getAttribute("aria-pressed")==="true"');
+  await evaluate('document.querySelector(".modal form").requestSubmit()');
+  await waitFor('!document.querySelector(".modal")');
+  const colored = await read();
+  const changed = colored.courses.find(course => course.id === expected[1].id);
+  assert.equal(changed.color, "#8d5ca3");
+  assert.deepEqual(changed.grades, expected[1].grades);
+  assert.deepEqual(changed.weights, expected[1].weights);
+  await call("Page.reload");
+  await waitFor('document.querySelectorAll("tbody tr").length===6');
+  assert.deepEqual(await read(), colored);
+  // Actual native mouse/touch input exercises pointer capture, not synthetic events.
+  for (const touch of [false, true]) {
+    await call("Emulation.setDeviceMetricsOverride", { width: touch ? 390 : 1280, height: 900, deviceScaleFactor: 1, mobile: touch });
+    await call("Emulation.setTouchEmulationEnabled", { enabled: touch });
+    await evaluate('document.querySelector("tbody tr").scrollIntoView({block:"start"});window.scrollBy(0,-80)');
+    const before = await evaluate('[...document.querySelectorAll("tbody tr")].map(row=>row.dataset.courseId)');
+    const points = await evaluate('[...document.querySelectorAll(".course-drag-handle")].slice(0,2).map(handle=>{const r=handle.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})');
+    if (touch) {
+      await call("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [points[0]] });
+      await call("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [points[1]] });
+      await call("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    } else {
+      await call("Input.dispatchMouseEvent", { type: "mousePressed", ...points[0], button: "left", clickCount: 1 });
+      await call("Input.dispatchMouseEvent", { type: "mouseMoved", ...points[1], button: "left", buttons: 1 });
+      await call("Input.dispatchMouseEvent", { type: "mouseReleased", ...points[1], button: "left", clickCount: 1 });
+    }
+    await waitFor(`document.querySelector("tbody tr").dataset.courseId===${JSON.stringify(before[1])}`);
+  }
+  await evaluate(`new Promise((resolve,reject)=>{const request=indexedDB.open('MiControlDeNotas');request.onsuccess=()=>{const database=request.result,tx=database.transaction('scheduleEntries','readwrite');tx.objectStore('scheduleEntries').put({id:'qa-session',courseId:${JSON.stringify(expected[1].id)},day:0,startMinute:480,endMinute:540,location:'QA-201',teacher:'QA',modality:'presencial',meetingUrl:'',notes:''});tx.oncomplete=()=>{database.close();resolve(true)};tx.onerror=()=>reject(tx.error)};request.onerror=()=>reject(request.error)})`);
+  const responsive = [];
+  for (const width of [320, 390, 768, 1280]) {
+    await call("Emulation.setDeviceMetricsOverride", { width, height: 900, deviceScaleFactor: 1, mobile: width < 600 });
+    for (const hash of ["#", "#configuracion", "#horario"]) {
+      await evaluate(`location.hash=${JSON.stringify(hash)}`);
+      await waitFor(hash === "#" ? '!!document.querySelector(".home-page")' : hash === "#horario" ? '!!document.querySelector(".class-block")' : '!!document.querySelector(".home-settings")');
+      assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth+1'), true, `Overflow ${width} ${hash}`);
+      if (hash === "#horario") assert.equal(await evaluate('document.querySelector(".class-block").style.getPropertyValue("--session-accent")'), "#8d5ca3");
+      responsive.push({ width, hash });
+    }
+  }
   assert.deepEqual(errors, []);
   assert.deepEqual(external, []);
   assert.deepEqual(failedResources, []);
@@ -244,6 +307,8 @@ try {
         matrix,
         migrationPreserved: true,
         reloadPreserved: true,
+        stage1NavigationColorsAndNativeDrag: true,
+        responsive,
         errors,
         external,
         failedResources,

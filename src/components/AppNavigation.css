@@ -5,3 +5,9 @@
   gap: inherit;
   min-width: 0;
 }
+
+.app-navigation { flex-wrap: wrap; }
+@media (max-width: 600px) {
+  .app-navigation { gap: 2px; }
+  .app-navigation .nav { min-width: 40px; min-height: 44px; justify-content: center; }
+}

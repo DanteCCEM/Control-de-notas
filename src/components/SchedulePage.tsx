@@ -28,6 +28,7 @@ import {
 } from "../utils/schedule";
 import { deleteSession } from "../services/schedule";
 import { SessionEditor } from "./SessionEditor";
+import { CourseBadge } from "./CourseBadge";
 import "./SchedulePage.css";
 const dateLabel = (date: Date) =>
   date.toLocaleDateString(undefined, { day: "numeric", month: "short" });
@@ -77,7 +78,7 @@ export function SchedulePage({
     return occurrence.start <= now && now < occurrence.end;
   };
   const style = (s: ScheduleSession): CSSProperties => {
-    const [accent, tint] = courseColors(s.courseId);
+    const [accent, tint] = courseColors(s.courseId, courseById.get(s.courseId)?.color);
     return {
       "--session-accent": accent,
       "--session-tint": tint,
@@ -158,6 +159,7 @@ export function SchedulePage({
             {next ? (
               <>
                 <h2>
+                  {courseById.get(next.session.courseId) && <CourseBadge course={courseById.get(next.session.courseId)!} />}
                   {courseById.get(next.session.courseId)?.name ??
                     "Curso no disponible"}
                 </h2>

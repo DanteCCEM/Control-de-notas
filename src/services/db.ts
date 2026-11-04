@@ -1,5 +1,6 @@
 ﻿import { validGrade, parseBackup } from "../utils/grades";
 import Dexie, { type Table } from "dexie";
+import { validCourseColor } from "../utils/courseColors";
 import type { ScheduleSession } from "../types/schedule";
 import type { Course, Settings, Backup } from "../types";
 import {
@@ -68,6 +69,8 @@ export async function getOrderedCourses(
   return (await database.courses.toArray()).sort(compareCourseOrder);
 }
 export async function saveCourse(course: Course, database: NotesDB = db) {
+  if (course.color !== undefined && !validCourseColor(course.color))
+    throw new Error("El color debe tener formato hexadecimal #RRGGBB.");
   await database.transaction("rw", database.courses, async () => {
     const existing = await database.courses.get(course.id);
     const order =
@@ -78,7 +81,7 @@ export async function saveCourse(course: Course, database: NotesDB = db) {
       ) + 1;
     if (!validOrder(order))
       throw new Error("No se puede asignar una posición válida al curso.");
-    await database.courses.put({ ...course, order });
+    await database.courses.put({ ...course, grades: existing?.grades ?? course.grades, order });
   });
 }
 export async function updateGrade(
@@ -150,4 +153,20 @@ export async function importBackup(b: Backup, allowOrphanRemoval = false) {
       await db.settings.put(b.settings);
     },
   );
+}
+
+// Read current records inside the transaction; never overwrite grade payloads.
+export async function moveCourse(id: string, targetId: string, database: NotesDB = db) {
+  await database.transaction("rw", database.courses, async () => {
+    const courses = await getOrderedCourses(database);
+    const from = courses.findIndex(course => course.id === id);
+    const to = courses.findIndex(course => course.id === targetId);
+    if (from < 0 || to < 0) throw new Error("El curso ya no existe. Actualiza la lista e inténtalo de nuevo.");
+    if (from === to) return;
+    const [course] = courses.splice(from, 1);
+    courses.splice(to, 0, course);
+    for (const [order, current] of courses.entries()) {
+      if (current.order !== order) await database.courses.update(current.id, { order });
+    }
+  });
 }

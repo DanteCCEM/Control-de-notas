@@ -1,5 +1,6 @@
 ﻿import type { Backup, Course } from "../types";
 import { withCourseOrder, validOrder } from "./courseOrder";
+import { validCourseColor } from "./courseColors";
 import { validateSession } from "./schedule";
 
 export function validGrade(n: number) {
@@ -83,6 +84,7 @@ export function parseBackup(raw: string): Backup {
       (c.order !== undefined && !validOrder(c.order)) ||
       ids.has(c.id) ||
       typeof c.name !== "string" ||
+      (c.color !== undefined && !validCourseColor(c.color)) ||
       !c.name.trim() ||
       c.name.length > 120 ||
       !Array.isArray(c.weights) ||

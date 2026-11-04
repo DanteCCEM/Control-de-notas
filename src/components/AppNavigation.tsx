@@ -1,32 +1,35 @@
 ﻿import {
   BookOpen,
+  House,
+  Settings,
   Calculator,
   GraduationCap,
   CalendarDays,
 } from "lucide-react";
 import { getAvailableAcademicModules } from "../modules/registry";
-import type { AcademicModuleId } from "../types/modules";
+import type { AppPageId } from "../types/modules";
 import "./AppNavigation.css";
 
 interface AppNavigationProps {
-  activeModule?: AcademicModuleId;
+  activeModule?: AppPageId;
   onOpenCalculator: () => void;
 }
 
 export function AppNavigation({
-  activeModule = "grades",
+  activeModule = "home",
   onOpenCalculator,
 }: AppNavigationProps) {
   return (
     <nav className="app-navigation" aria-label="Navegación académica">
       <div className="nav-label">MI ESPACIO ACADÉMICO</div>
+      <a className={"nav" + (activeModule === "home" ? " active" : "")} href="#" aria-current={activeModule === "home" ? "page" : undefined}><House size={19} />Inicio</a>
       {getAvailableAcademicModules().map((module) => {
         const Icon =
           module.id === "grades"
             ? GraduationCap
             : module.id === "schedule"
               ? CalendarDays
-              : BookOpen;
+              : module.id === "settings" ? Settings : BookOpen;
         const active = module.id === activeModule;
         return (
           <a

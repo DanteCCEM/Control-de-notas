@@ -1,6 +1,9 @@
 ﻿import { useEffect, useRef, useState } from "react";
 import {
   BookOpen,
+  GripVertical,
+  ChevronUp,
+  ChevronDown,
   Plus,
   Moon,
   Sun,
@@ -18,11 +21,16 @@ import {
   ShieldCheck,
   ArrowUpRight,
 } from "lucide-react";
+import { HomePage } from "./components/HomePage";
 import { useData } from "./hooks/useData";
+import { useCourseReorder } from "./hooks/useCourseReorder";
+import { CourseColorPicker } from "./components/CourseColorPicker";
+import { CourseBadge } from "./components/CourseBadge";
 import {
   db,
   newCourse,
   saveCourse,
+  moveCourse,
   updateGrade,
   lockGrade,
   exportBackup,
@@ -58,6 +66,7 @@ export default function App() {
   const activeModule = useModuleNavigation();
   const startup = useStartup();
   const { courses, settings } = useData(startup.initialized);
+  const reorder = useCourseReorder(courses ?? [], moveCourse);
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(0);
   const [editor, setEditor] = useState<Course | null>(null);
@@ -202,7 +211,7 @@ export default function App() {
           <span>
             Mi espacio <span className="slash">/</span>{" "}
             <strong>
-              {activeModule === "schedule" ? "Mi Horario" : "Resumen académico"}
+              {activeModule === "home" ? "Inicio" : activeModule === "settings" ? "Configuración" : activeModule === "schedule" ? "Mi Horario" : "Resumen académico"}
             </strong>
           </span>
           <div className="header-right">
@@ -224,7 +233,22 @@ export default function App() {
           </div>
         </header>
         <main>
-          {activeModule === "schedule" ? (
+          {activeModule !== "home" && <a className="home-back" href="#">← Volver al inicio</a>}
+          {activeModule === "home" ? (
+            <HomePage courses={courses} />
+          ) : activeModule === "settings" ? (
+            <section className="panel home-settings">
+              <h1>Configuración</h1>
+              <p>Personaliza tu espacio y administra tus respaldos.</p>
+              <label>Nota mínima aprobatoria
+                <input aria-label="Nota mínima aprobatoria" type="number" min="0" max="20" step="0.01" value={settings.threshold}
+                  onChange={e => { const n = Number(e.target.value); if (e.target.value !== "" && validGrade(n)) void run(() => db.settings.update("main", { threshold: n })); }} />
+              </label>
+              <button onClick={() => void run(() => db.settings.update("main", { dark: !settings.dark }))}>Usar tema {settings.dark ? "claro" : "oscuro"}</button>
+              <h2>Copias de seguridad</h2>
+              {backupControls}
+            </section>
+          ) : activeModule === "schedule" ? (
             <SchedulePage courses={courses} backupActions={backupControls} />
           ) : (
             <>
@@ -335,6 +359,7 @@ export default function App() {
                       Mis cursos <span className="count">{courses.length}</span>
                     </h2>
                     <p>Tu avance académico, evaluación por evaluación.</p>
+                    <p id="course-reorder-help">Arrastra el asa para ordenar o usa las flechas. Escape cancela el arrastre.</p>
                   </div>
                   {backupControls}
                 </div>
@@ -382,14 +407,17 @@ export default function App() {
                               ? "Aprobado"
                               : "Desaprobado";
                         return (
-                          <tr key={c.id} data-course-id={c.id}>
+                          <tr key={c.id} data-course-id={c.id} className={reorder.rowClass(c.id)}>
                             <td>
                               <div className="course-name">
-                                <span
-                                  className={"course-icon color-" + (k % 4)}
-                                >
-                                  <BookOpen size={17} />
+                                <span className="course-order-controls">
+                                  <button type="button" className="course-drag-handle" aria-label={"Arrastrar " + c.name} aria-describedby="course-reorder-help" title="Arrastrar para reordenar" disabled={reorder.saving || courses.length < 2} {...reorder.handleProps(c.id)}><GripVertical size={18} /></button>
+                                  <span className="course-order-arrows">
+                                    <button type="button" aria-label={"Subir " + c.name} disabled={reorder.saving || k === 0} onClick={() => void reorder.move(c.id, courses[k - 1].id)}><ChevronUp size={14} /></button>
+                                    <button type="button" aria-label={"Bajar " + c.name} disabled={reorder.saving || k === courses.length - 1} onClick={() => void reorder.move(c.id, courses[k + 1].id)}><ChevronDown size={14} /></button>
+                                  </span>
                                 </span>
+                                <CourseBadge course={c} />
                                 <div>
                                   <strong>{c.name}</strong>
                                   <div className="course-progress">
@@ -530,6 +558,7 @@ export default function App() {
           </footer>
         </main>
       </div>
+      {reorder.announcement && <div className="reorder-status" role="status">{reorder.announcement}</div>}
       {notice && (
         <div
           className={"toast " + (notice.startsWith("Error") ? "error" : "")}
@@ -572,6 +601,7 @@ export default function App() {
                 onChange={(e) => setEditor({ ...editor, name: e.target.value })}
               />
             </label>
+            <CourseColorPicker id={editor.id} color={editor.color} onChange={color => setEditor({ ...editor, color })} />
             <p>Ponderaciones · deben sumar exactamente 100%</p>
             <div className="weights">
               {labels.map((l, i) => (
