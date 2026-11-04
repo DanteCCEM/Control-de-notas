@@ -144,7 +144,7 @@ try {
       `new Promise((resolve,reject)=>{const request=indexedDB.open('MiControlDeNotas');request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result,tx=db.transaction(['courses','settings'],'readonly');const records=tx.objectStore('courses').getAll(),config=tx.objectStore('settings').get('main');tx.oncomplete=()=>{const result={version:db.version,courses:records.result,settings:config.result};db.close();resolve(result);};};})`,
     );
   const migrated = await read();
-  assert.equal(migrated.version, 30);
+  assert.equal(migrated.version, 40);
   assert.deepEqual(migrated.settings, settings);
   const expected = [...fixture].sort((a, b) => (a.id < b.id ? -1 : 1));
   assert.deepEqual(
@@ -297,6 +297,50 @@ try {
       responsive.push({ width, hash });
     }
   }
+  const setField = async (selector, value) => evaluate(`(()=>{const element=document.querySelector(${JSON.stringify(selector)});Object.getOwnPropertyDescriptor(Object.getPrototypeOf(element),'value').set.call(element,${JSON.stringify(value)});element.dispatchEvent(new Event('change',{bubbles:true}));element.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+  const readSchedule = () => evaluate(`new Promise((resolve,reject)=>{const request=indexedDB.open('MiControlDeNotas');request.onsuccess=()=>{const database=request.result,tx=database.transaction('scheduleEntries','readonly'),records=tx.objectStore('scheduleEntries').getAll();tx.oncomplete=()=>{database.close();resolve(records.result)};tx.onerror=()=>reject(tx.error)};request.onerror=()=>reject(request.error)})`);
+  await evaluate(`[...document.querySelectorAll('button')].find(button=>button.textContent.includes('Agregar sesión')).click()`);
+  await waitFor('!!document.querySelector(".schedule-editor")');
+  await setField('.schedule-editor fieldset select', 'weekly');
+  await waitFor('!!document.querySelector(".schedule-editor input[type=number]")');
+  await setField('.schedule-editor input[type=date]', '2026-12-29');
+  await evaluate('document.querySelector(".schedule-editor").requestSubmit()');
+  await waitFor('!document.querySelector(".modal")');
+  let series = (await readSchedule()).find(s => s.recurrence);
+  assert.equal(series.recurrence.weeks, 16);
+  assert.equal(series.date, '2026-12-29');
+  assert.equal((await readSchedule()).length, 2, 'A series must occupy one record');
+  await setField('.range-controls input[type=date]', '2026-12-29');
+  await waitFor(`!![...document.querySelectorAll('.class-block')].find(block=>block.textContent.includes('2026-12-29'))`);
+  await evaluate(`[...document.querySelectorAll('.class-block')].find(block=>block.textContent.includes('2026-12-29')).click()`);
+  await waitFor('!!document.querySelector("input[name=edit-scope]")');
+  await setField('.schedule-editor input[placeholder]', 'Aula excepción');
+  await evaluate('document.querySelector(".schedule-editor").requestSubmit()');
+  await waitFor('!document.querySelector(".modal")');
+  series = (await readSchedule()).find(s => s.recurrence);
+  assert.equal(series.recurrence.exceptions['0'].override.location, 'Aula excepción');
+  assert.equal(series.location, '');
+  await evaluate(`document.querySelector('.stored-series').open=true;[...document.querySelectorAll('.stored-series button')].find(button=>button.textContent==='Editar serie').click()`);
+  await waitFor('!!document.querySelector(".schedule-editor")');
+  await setField('.schedule-editor input[placeholder]', 'Aula serie');
+  await evaluate('document.querySelector(".schedule-editor").requestSubmit()');
+  await waitFor('!document.querySelector(".modal")');
+  series = (await readSchedule()).find(s => s.recurrence);
+  assert.equal(series.location, 'Aula serie');
+  assert.equal(series.recurrence.exceptions['0'].override.location, 'Aula excepción');
+  await call('Page.reload');
+  await waitFor('!!document.querySelector(".stored-series")');
+  assert.deepEqual((await readSchedule()).find(s=>s.recurrence), series);
+  await setField('.range-controls input[type=date]', '2026-12-29');
+  await waitFor(`!![...document.querySelectorAll('.sessions-list .session-row')].find(row=>row.textContent.includes('2026-12-29'))`);
+  await evaluate(`window.confirm=()=>true;[...document.querySelectorAll('.sessions-list .session-row')].find(row=>row.textContent.includes('2026-12-29')).querySelector('button[aria-label^=Eliminar]').click()`);
+  await waitFor('!!document.querySelector("#delete-series-title")');
+  await evaluate(`[...document.querySelectorAll('.modal button')].find(button=>button.textContent==='Solo esta clase').click()`);
+  await waitFor('!document.querySelector(".modal")');
+  assert.equal((await readSchedule()).find(s=>s.recurrence).recurrence.exceptions['0'].cancelled, true);
+  await evaluate(`document.querySelector('.stored-series').open=true;[...document.querySelectorAll('.stored-series button')].find(button=>button.textContent==='Eliminar serie').click()`);
+  await waitFor(`![...document.querySelectorAll('.stored-series button')].some(button=>button.textContent==='Eliminar serie')`);
+  assert.equal((await readSchedule()).length, 1);
   assert.deepEqual(errors, []);
   assert.deepEqual(external, []);
   assert.deepEqual(failedResources, []);
@@ -309,6 +353,7 @@ try {
         reloadPreserved: true,
         stage1NavigationColorsAndNativeDrag: true,
         responsive,
+        recurringSeriesLifecycle: true,
         errors,
         external,
         failedResources,

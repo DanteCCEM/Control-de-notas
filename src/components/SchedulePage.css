@@ -605,3 +605,9 @@ button.class-block {
 .class-block, .daily-session { color: #153c57; text-shadow: none; }
 .dark .daily-session { color: #153c57; }
 .daily-session .meeting-link, .dark .daily-session .meeting-link { color: #154d75; }
+
+.session-recurrence { font-size: 10px; line-height: 1.4; margin-top: 5px; overflow-wrap: anywhere; }
+.stored-series { padding: 18px; margin-top: 20px; }
+.stored-series summary { cursor: pointer; font-weight: 600; padding: 8px 0; }
+.range-controls input[type=date] { max-width: 150px; }
+@media(max-width:600px) { .stored-series .session-row { flex-wrap: wrap; } .stored-series .session-actions { flex-wrap: wrap; } }

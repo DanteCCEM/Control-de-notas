@@ -1,0 +1,60 @@
+// @vitest-environment jsdom
+import { afterEach, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { SessionEditor } from "./SessionEditor";
+import { newCourse } from "../services/db";
+import { saveSessions } from "../services/schedule";
+import { expandSession } from "../utils/recurrence";
+import type { ScheduleSession } from "../types/schedule";
+vi.mock("../services/schedule", async importOriginal => ({ ...await importOriginal<typeof import("../services/schedule")>(), saveSessions: vi.fn().mockResolvedValue([]) }));
+const course = newCourse("Álgebra");
+const series: ScheduleSession = { id: "series", courseId: course.id, day: 0, date: "2026-12-28", startMinute: 480, endMinute: 540, location: "Aula A", teacher: "Docente A", modality: "presencial", meetingUrl: "", notes: "", recurrence: { weeks: 16, exceptions: {} } };
+afterEach(() => { cleanup(); vi.clearAllMocks(); });
+it("ofrece 16 semanas por defecto y envía fecha y día locales coherentes", async () => {
+  const saved = vi.fn();
+  render(<SessionEditor session={null} courses={[course]} sessions={[]} onClose={() => {}} onSaved={saved} />);
+  fireEvent.change(screen.getByLabelText("Frecuencia"), { target: { value: "weekly" } });
+  expect((screen.getByLabelText("Cantidad de semanas") as HTMLInputElement).value).toBe("16");
+  fireEvent.change(screen.getByLabelText("Fecha de inicio de la recurrencia"), { target: { value: "2026-12-28" } });
+  fireEvent.click(screen.getByRole("button", { name: "Guardar sesión" }));
+  await waitFor(() => expect(saved).toHaveBeenCalledOnce());
+  expect(vi.mocked(saveSessions).mock.calls[0][0]).toMatchObject({ date: "2026-12-28", days: [0], recurrence: { weeks: 16, exceptions: {} } });
+});
+it("distingue edición de una ocurrencia y de toda la serie", async () => {
+  const occurrence = expandSession(series)[3];
+  const props = { session: occurrence, master: series, courses: [course], sessions: [series], onClose: () => {}, onSaved: () => {} };
+  const view = render(<SessionEditor {...props} />);
+  fireEvent.change(screen.getByLabelText("Aula o ubicación"), { target: { value: "Excepción" } });
+  fireEvent.click(screen.getByRole("button", { name: "Guardar sesión" }));
+  await waitFor(() => expect(saveSessions).toHaveBeenCalledOnce());
+  expect(vi.mocked(saveSessions).mock.calls[0][0]).toMatchObject({ seriesId: "series", occurrenceIndex: 3, location: "Excepción" });
+  view.unmount(); vi.mocked(saveSessions).mockClear();
+  render(<SessionEditor {...props} />);
+  fireEvent.click(screen.getByLabelText("Toda la serie"));
+  expect((screen.getByLabelText("Cantidad de semanas") as HTMLInputElement).value).toBe("16");
+  fireEvent.change(screen.getByLabelText("Docente"), { target: { value: "Nuevo docente" } });
+  fireEvent.click(screen.getByRole("button", { name: "Guardar sesión" }));
+  await waitFor(() => expect(saveSessions).toHaveBeenCalledOnce());
+  expect(vi.mocked(saveSessions).mock.calls[0][0]).toMatchObject({ id: "series", seriesId: undefined, teacher: "Nuevo docente", recurrence: { weeks: 16 } });
+});
+it("exige confirmación cuando una serie cruza otra fecha y no confunde semanas disjuntas", () => {
+  render(<SessionEditor session={null} courses={[course]} sessions={[{ ...series, startMinute: 500 }]} onClose={() => {}} onSaved={() => {}} />);
+  fireEvent.change(screen.getByLabelText("Frecuencia"), { target: { value: "weekly" } });
+  fireEvent.change(screen.getByLabelText("Fecha de inicio de la recurrencia"), { target: { value: "2026-12-28" } });
+  expect((screen.getByRole("button", { name: "Guardar sesión" }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole("checkbox", { name: /Entiendo el conflicto/ }));
+  expect((screen.getByRole("button", { name: "Guardar sesión" }) as HTMLButtonElement).disabled).toBe(false);
+  fireEvent.change(screen.getByLabelText("Fecha de inicio de la recurrencia"), { target: { value: "2027-05-03" } });
+  expect(screen.queryByRole("checkbox", { name: /Entiendo el conflicto/ })).toBeNull();
+});
+it("permite acortar la serie y elimina solo las excepciones fuera del nuevo rango al guardar", async () => {
+  const source = { ...series, recurrence: { weeks: 16, exceptions: { "15": { cancelled: true as const }, "2": { cancelled: true as const } } } };
+  render(<SessionEditor session={source} courses={[course]} sessions={[source]} onClose={() => {}} onSaved={() => {}} />);
+  fireEvent.change(screen.getByLabelText("Cantidad de semanas"), { target: { value: "4" } });
+  fireEvent.change(screen.getByLabelText("Cantidad de semanas"), { target: { value: "16" } });
+  fireEvent.change(screen.getByLabelText("Cantidad de semanas"), { target: { value: "4" } });
+  fireEvent.click(screen.getByRole("button", { name: "Guardar sesión" }));
+  await waitFor(() => expect(saveSessions).toHaveBeenCalledOnce());
+  expect(vi.mocked(saveSessions).mock.calls[0][0].recurrence).toEqual({ weeks: 4, exceptions: { "2": { cancelled: true } } });
+  expect(source.recurrence.exceptions["15"]).toEqual({ cancelled: true });
+});

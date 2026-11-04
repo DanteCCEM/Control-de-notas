@@ -23,5 +23,5 @@ interface BackupBase {
 export type Backup = BackupBase &
   (
     | { version: 1 }
-    | { version: 2; scheduleEntries: import("./schedule").ScheduleSession[] }
+    | { version: 2 | 3; scheduleEntries: import("./schedule").ScheduleSession[] }
   );

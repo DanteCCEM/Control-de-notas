@@ -225,7 +225,7 @@ describe("Sesiones y relaciones persistentes", () => {
   });
 });
 describe("Migración y respaldos", () => {
-  it("migra v2 a v3 sin alterar cursos, configuración ni candados", async () => {
+  it("migra v2 a v4 sin alterar cursos, configuración ni candados", async () => {
     const name = "ScheduleMigration-" + crypto.randomUUID();
     const legacy = new Dexie(name);
     legacy.version(2).stores({ courses: "id,order", settings: "id" });
@@ -238,7 +238,7 @@ describe("Migración y respaldos", () => {
     const upgraded = new NotesDB(name);
     try {
       await upgraded.open();
-      expect(upgraded.verno).toBe(3);
+      expect(upgraded.verno).toBe(4);
       expect(await upgraded.courses.get(c.id)).toEqual(c);
       expect(await upgraded.settings.get("main")).toEqual(settings);
       expect(await upgraded.scheduleEntries.count()).toBe(0);
@@ -246,11 +246,11 @@ describe("Migración y respaldos", () => {
       await upgraded.delete();
     }
   });
-  it("exporta y restaura v2 con todos los horarios", async () => {
+  it("exporta y restaura v3 con todos los horarios", async () => {
     const c = (await db.courses.toArray())[0];
     await saveSessions(draft(c.id, { days: [0, 3] }));
     const before = await exportBackup();
-    expect(before.version).toBe(2);
+    expect(before.version).toBe(3);
     await db.scheduleEntries.clear();
     await importBackup(parseBackup(JSON.stringify(before)));
     expect(await exportBackup()).toEqual(before);
@@ -273,7 +273,7 @@ describe("Migración y respaldos", () => {
   });
   it("rechaza respaldos con sesiones inválidas, IDs repetidos, duplicados o cursos ausentes", async () => {
     const b = await exportBackup();
-    if (b.version !== 2) throw Error("Formato");
+    if (b.version !== 3) throw Error("Formato");
     const c = b.courses[0];
     const s = session({ courseId: c.id });
     for (const entries of [

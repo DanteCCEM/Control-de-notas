@@ -1,4 +1,5 @@
-﻿import { modalities, type ScheduleSession } from "../types/schedule";
+import { addDays, dateDay, expandSession, parseLocalDate } from "./recurrence";
+import { modalities, type ScheduleSession } from "../types/schedule";
 export function timeToMinute(time: string): number {
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return NaN;
   const [h, m] = time.split(":").map(Number);
@@ -18,6 +19,25 @@ export function validMeetingUrl(value: string) {
   }
 }
 export function validateSession(s: ScheduleSession): void {
+  if (s?.date !== undefined) {
+    parseLocalDate(s.date);
+    if (dateDay(s.date) !== s.day) throw new Error("El día no coincide con la fecha inicial.");
+  }
+  if (s?.recurrence !== undefined) {
+    const rule = s.recurrence;
+    if (!s.date || !rule || !Number.isInteger(rule.weeks) || rule.weeks < 1 || rule.weeks > 104 || !rule.exceptions || typeof rule.exceptions !== "object" || Array.isArray(rule.exceptions)) throw new Error("La repetición debe contener entre 1 y 104 semanas.");
+    addDays(s.date, (rule.weeks - 1) * 7);
+    for (const [key, exception] of Object.entries(rule.exceptions)) {
+      if (!/^(0|[1-9]\d*)$/.test(key) || Number(key) >= rule.weeks || !exception || typeof exception !== "object") throw new Error("Excepción de recurrencia inválida.");
+      if ("cancelled" in exception) {
+        if (exception.cancelled !== true || "override" in exception) throw new Error("Excepción inválida.");
+      } else if ("override" in exception && exception.override && exception.override.courseId === s.courseId) {
+        const fields = exception.override;
+        if ((fields as ScheduleSession).recurrence || !fields.date) throw new Error("Excepción inválida.");
+        validateSession({ ...fields, id: `${s.id}:${key}` });
+      } else throw new Error("Excepción inválida.");
+    }
+  }
   if (
     !s ||
     typeof s.id !== "string" ||
@@ -51,21 +71,24 @@ export function validateSession(s: ScheduleSession): void {
     throw new Error(
       "Revisa la modalidad, los textos y el enlace (solo http o https).",
     );
+  if (s.recurrence) {
+    const expanded = expandSession(s);
+    if (expanded.some((entry, i) => expanded.some((other, j) => i !== j && sameSlot(entry, other)))) throw new Error("La serie contiene ocurrencias duplicadas.");
+  }
 }
-export function overlaps(a: ScheduleSession, b: ScheduleSession) {
+function slotOverlaps(a: ScheduleSession, b: ScheduleSession) {
   return (
     a.day === b.day &&
+    (!a.date || !b.date || a.date === b.date) &&
     a.startMinute < b.endMinute &&
     b.startMinute < a.endMinute
   );
 }
+export function overlaps(a: ScheduleSession, b: ScheduleSession) {
+  return expandSession(a).some(x => expandSession(b).some(y => slotOverlaps(x, y)));
+}
 export function sameSlot(a: ScheduleSession, b: ScheduleSession) {
-  return (
-    a.courseId === b.courseId &&
-    a.day === b.day &&
-    a.startMinute === b.startMinute &&
-    a.endMinute === b.endMinute
-  );
+  return expandSession(a).some(x => expandSession(b).some(y => x.courseId === y.courseId && x.day === y.day && (!x.date || !y.date || x.date === y.date) && x.startMinute === y.startMinute && x.endMinute === y.endMinute));
 }
 export function sessionConflicts(
   s: ScheduleSession,
@@ -80,30 +103,32 @@ export function mondayOfWeek(date: Date) {
   return d;
 }
 export function sessionOccurrence(s: ScheduleSession, week: Date) {
-  const start = mondayOfWeek(week);
-  start.setDate(start.getDate() + s.day);
+  const start = s.date ? parseLocalDate(s.date) : mondayOfWeek(week);
+  if (!s.date) start.setDate(start.getDate() + s.day);
   start.setHours(Math.floor(s.startMinute / 60), s.startMinute % 60, 0, 0);
   const end = new Date(start);
   end.setHours(Math.floor(s.endMinute / 60), s.endMinute % 60, 0, 0);
   return { start, end };
 }
 export function nextClass(sessions: readonly ScheduleSession[], now: Date) {
-  const list = sessions.map((session) => {
+  const list = sessions.flatMap(expandSession).map((session) => {
     let { start, end } = sessionOccurrence(session, now);
     if (end.getTime() <= now.getTime()) {
+      if (session.date) return null;
       const week = new Date(now);
       week.setDate(week.getDate() + 7);
       ({ start, end } = sessionOccurrence(session, week));
     }
     return { session, start, end, isCurrent: start <= now && now < end };
   });
-  list.sort(
+  const upcoming = list.filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+  upcoming.sort(
     (a, b) =>
       Number(b.isCurrent) - Number(a.isCurrent) ||
       a.start.getTime() - b.start.getTime() ||
       a.session.id.localeCompare(b.session.id),
   );
-  return list[0] ?? null;
+  return upcoming[0] ?? null;
 }
 export function remainingTime(ms: number) {
   const mins = Math.max(0, Math.ceil(ms / 60000));

@@ -168,7 +168,7 @@ export default function App() {
                   : 0;
               if (
                 confirm(
-                  `¿Reemplazar todos los datos por ${b.courses.length} cursos del respaldo? ${b.version === 2 ? "También se reemplazará todo el horario con el del respaldo." : "Se conservarán las sesiones cuyos cursos estén en el respaldo."} Se restaurarán los candados. ${orphanCount ? `Se eliminarán ${orphanCount} sesiones que quedarían sin curso. ¿Confirmas también su eliminación?` : ""}`,
+                  `¿Reemplazar todos los datos por ${b.courses.length} cursos del respaldo? ${b.version !== 1 ? "También se reemplazará todo el horario con el del respaldo." : "Se conservarán las sesiones cuyos cursos estén en el respaldo."} Se restaurarán los candados. ${orphanCount ? `Se eliminarán ${orphanCount} sesiones que quedarían sin curso. ¿Confirmas también su eliminación?` : ""}`,
                 )
               )
                 await importBackup(b, orphanCount > 0);

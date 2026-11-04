@@ -29,6 +29,8 @@ import {
 import { deleteSession } from "../services/schedule";
 import { SessionEditor } from "./SessionEditor";
 import { CourseBadge } from "./CourseBadge";
+import { Modal } from "./Modal";
+import { weekSessions, recurrenceLabel, parseLocalDate } from "../utils/recurrence";
 import "./SchedulePage.css";
 const dateLabel = (date: Date) =>
   date.toLocaleDateString(undefined, { day: "numeric", month: "short" });
@@ -39,7 +41,7 @@ export function SchedulePage({
   courses: readonly Course[];
   backupActions: ReactNode;
 }) {
-  const sessions = useSchedule();
+  const storedSessions = useSchedule();
   const now = useLocalClock();
   const [weekOffset, setWeekOffset] = useState(0),
     [day, setDay] = useState((now.getDay() + 6) % 7),
@@ -49,10 +51,12 @@ export function SchedulePage({
       undefined,
     ),
     [message, setMessage] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<ScheduleSession | null>(null);
   const week = mondayOfWeek(now);
   week.setDate(week.getDate() + weekOffset * 7);
   const last = new Date(week);
   last.setDate(last.getDate() + 6);
+  const sessions = storedSessions ? weekSessions(storedSessions, week) : undefined;
   if (!sessions)
     return (
       <section className="panel schedule-loading" role="status">
@@ -60,7 +64,7 @@ export function SchedulePage({
       </section>
     );
   const courseById = new Map(courses.map((c) => [c.id, c]));
-  const next = nextClass(sessions, now);
+  const next = nextClass(storedSessions!, now);
   const hours = Array.from(
     { length: rangeEnd - rangeStart + 1 },
     (_, i) => rangeStart + i,
@@ -85,9 +89,10 @@ export function SchedulePage({
     } as CSSProperties;
   };
   async function remove(s: ScheduleSession) {
+    if (s.seriesId) { setDeleteTarget(s); return; }
     if (
       !confirm(
-        `¿Eliminar la sesión de ${courseById.get(s.courseId)?.name ?? "este curso"} del ${weekDays[s.day]}, ${minuteToTime(s.startMinute)}–${minuteToTime(s.endMinute)}?`,
+        s.recurrence ? "¿Eliminar toda la serie, incluidas sus excepciones?" : `¿Eliminar la sesión de ${courseById.get(s.courseId)?.name ?? "este curso"} del ${weekDays[s.day]}, ${minuteToTime(s.startMinute)}–${minuteToTime(s.endMinute)}?`,
       )
     )
       return;
@@ -97,6 +102,15 @@ export function SchedulePage({
     } catch {
       setMessage("Error: no se pudo eliminar la sesión.");
     }
+  }
+  async function removeRecurring(all: boolean) {
+    if (!deleteTarget?.seriesId) return;
+    if (!confirm(all ? "¿Eliminar toda la serie, incluidas sus excepciones?" : "¿Eliminar solo esta clase? Las demás se conservarán.")) return;
+    try {
+      await deleteSession(deleteTarget.seriesId, undefined, all ? undefined : deleteTarget.occurrenceIndex);
+      setDeleteTarget(null);
+      setMessage(all ? "Serie eliminada." : "Clase eliminada. Las demás se conservaron.");
+    } catch { setMessage("No se pudo eliminar la clase."); }
   }
   function details(s: ScheduleSession) {
     return (
@@ -120,6 +134,7 @@ export function SchedulePage({
           {s.modality}
           {current(s) && <strong> · En curso</strong>}
         </div>
+        <div className="session-recurrence">{s.seriesId ? `${s.date} · clase ${(s.occurrenceIndex ?? 0) + 1} · ${recurrenceLabel(storedSessions!.find(master => master.id === s.seriesId)!)}` : recurrenceLabel(s)}</div>
       </>
     );
   }
@@ -257,6 +272,10 @@ export function SchedulePage({
             </button>
           </div>
           <div className="range-controls">
+            <label>Ir a semana<input type="date" min="1900-01-01" max="9998-01-01" onChange={e => {
+              if (!e.target.value) return;
+              try { setWeekOffset(Math.round((mondayOfWeek(parseLocalDate(e.target.value)).getTime() - mondayOfWeek(now).getTime()) / 604800000)); } catch { setMessage("Selecciona una fecha válida."); }
+            }} /></label>
             <label>
               Desde
               <select
@@ -466,7 +485,7 @@ export function SchedulePage({
       <section className="panel sessions-list">
         <div className="panel-heading">
           <div>
-            <h2>Sesiones registradas</h2>
+            <h2>Clases de esta semana</h2>
             <p>
               Abre un bloque para editarlo o administra todas las sesiones aquí.
             </p>
@@ -487,6 +506,7 @@ export function SchedulePage({
                   {minuteToTime(s.endMinute)} · {s.location || s.modality}
                   {s.teacher ? " · " + s.teacher : ""}
                 </p>
+                <p>{s.seriesId ? `${s.date} · clase ${(s.occurrenceIndex ?? 0) + 1} de la serie` : recurrenceLabel(s)}</p>
               </div>
               <div className="session-actions">
                 <button
@@ -511,6 +531,14 @@ export function SchedulePage({
           </p>
         )}
       </section>
+      <details className="panel stored-series">
+        <summary>Administrar series y sesiones guardadas ({storedSessions!.length})</summary>
+        <p>Incluye series terminadas o sin clases visibles. Aquí los cambios y la eliminación se aplican a toda la serie.</p>
+        {storedSessions!.map(s => <article className="session-row" key={s.id} style={style(s)}>
+          <span className="course-dot" /><div><strong>{courseById.get(s.courseId)?.name}</strong><p>{recurrenceLabel(s)}</p></div>
+          <div className="session-actions"><button onClick={() => setEditor(s)}>{s.recurrence ? "Editar serie" : "Editar sesión"}</button><button className="error" onClick={() => void remove(s)}>{s.recurrence ? "Eliminar serie" : "Eliminar sesión"}</button></div>
+        </article>)}
+      </details>
       {message && (
         <p className="schedule-status" role="status">
           {message}
@@ -524,7 +552,8 @@ export function SchedulePage({
           key={editor?.id ?? "new"}
           session={editor}
           courses={courses}
-          sessions={sessions}
+          sessions={storedSessions!}
+          master={editor?.seriesId ? storedSessions!.find(s => s.id === editor.seriesId) : undefined}
           onClose={() => setEditor(undefined)}
           onSaved={() => {
             setEditor(undefined);
@@ -532,6 +561,15 @@ export function SchedulePage({
           }}
         />
       )}
+      {deleteTarget && <Modal titleId="delete-series-title" onClose={() => setDeleteTarget(null)}>
+        <h2 id="delete-series-title">Eliminar clase recurrente</h2>
+        <p>{deleteTarget.date} · {courseById.get(deleteTarget.courseId)?.name}</p>
+        <div className="editor-actions">
+          <button onClick={() => void removeRecurring(false)}>Solo esta clase</button>
+          <button className="error" onClick={() => void removeRecurring(true)}>Toda la serie</button>
+          <button onClick={() => setDeleteTarget(null)}>Cancelar</button>
+        </div>
+      </Modal>}
     </section>
   );
 }

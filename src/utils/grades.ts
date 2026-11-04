@@ -1,7 +1,7 @@
 ﻿import type { Backup, Course } from "../types";
 import { withCourseOrder, validOrder } from "./courseOrder";
 import { validCourseColor } from "./courseColors";
-import { validateSession } from "./schedule";
+import { validateSession, sameSlot } from "./schedule";
 
 export function validGrade(n: number) {
   return (
@@ -67,7 +67,7 @@ export function needed(
 export function parseBackup(raw: string): Backup {
   const b = JSON.parse(raw);
   if (
-    (b?.version !== 1 && b?.version !== 2) ||
+    (b?.version !== 1 && b?.version !== 2 && b?.version !== 3) ||
     !Array.isArray(b.courses) ||
     !b.settings ||
     b.settings.id !== "main" ||
@@ -103,29 +103,24 @@ export function parseBackup(raw: string): Backup {
       );
     ids.add(c.id);
   }
-  if (b.version === 2) {
+  if (b.version !== 1) {
     if (!Array.isArray(b.scheduleEntries))
       throw new Error("El respaldo no contiene un horario válido.");
     const sessionIds = new Set<string>();
-    const slots = new Set<string>();
+    const checked: import("../types/schedule").ScheduleSession[] = [];
     for (const session of b.scheduleEntries) {
       validateSession(session);
-      const slot = JSON.stringify([
-        session.courseId,
-        session.day,
-        session.startMinute,
-        session.endMinute,
-      ]);
+      if (session.seriesId !== undefined || session.occurrenceIndex !== undefined) throw new Error("El respaldo debe contener series, no ocurrencias derivadas.");
       if (
         !ids.has(session.courseId) ||
         sessionIds.has(session.id) ||
-        slots.has(slot)
+        checked.some(other => sameSlot(session, other))
       )
         throw new Error(
           "El horario contiene duplicados o referencias a cursos inexistentes.",
         );
       sessionIds.add(session.id);
-      slots.add(slot);
+      checked.push(session);
     }
   }
   return { ...b, courses: withCourseOrder(b.courses) } as Backup;

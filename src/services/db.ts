@@ -29,6 +29,11 @@ export class NotesDB extends Dexie {
       settings: "id",
       scheduleEntries: "id,courseId,day,&[courseId+day+startMinute+endMinute]",
     });
+    // Dated series can share a weekly slot when their dates do not overlap.
+    this.version(4).stores({
+      courses: "id,order", settings: "id",
+      scheduleEntries: "id,courseId,day",
+    });
   }
 }
 export const db = new NotesDB();
@@ -112,45 +117,45 @@ export async function lockGrade(id: string, index: number, locked: boolean) {
     await db.courses.put(c);
   });
 }
-export async function exportBackup(): Promise<Backup> {
-  return db.transaction(
+export async function exportBackup(database: NotesDB = db): Promise<Backup> {
+  return database.transaction(
     "r",
-    db.courses,
-    db.settings,
-    db.scheduleEntries,
+    database.courses,
+    database.settings,
+    database.scheduleEntries,
     async () => ({
-      version: 2,
-      courses: await getOrderedCourses(),
-      settings: (await db.settings.get("main"))!,
-      scheduleEntries: await db.scheduleEntries.toArray(),
+      version: 3,
+      courses: await getOrderedCourses(database),
+      settings: (await database.settings.get("main"))!,
+      scheduleEntries: await database.scheduleEntries.toArray(),
     }),
   );
 }
-export async function importBackup(b: Backup, allowOrphanRemoval = false) {
+export async function importBackup(b: Backup, allowOrphanRemoval = false, database: NotesDB = db) {
   b = parseBackup(JSON.stringify(b));
-  await db.transaction(
+  await database.transaction(
     "rw",
-    db.courses,
-    db.settings,
-    db.scheduleEntries,
+    database.courses,
+    database.settings,
+    database.scheduleEntries,
     async () => {
-      if (b.version === 2) {
-        await db.scheduleEntries.clear();
-        await db.scheduleEntries.bulkAdd(b.scheduleEntries);
+      if (b.version !== 1) {
+        await database.scheduleEntries.clear();
+        await database.scheduleEntries.bulkAdd(b.scheduleEntries);
       } else {
         const ids = new Set(b.courses.map((c) => c.id));
-        const orphanIds = (await db.scheduleEntries.toArray())
+        const orphanIds = (await database.scheduleEntries.toArray())
           .filter((s) => !ids.has(s.courseId))
           .map((s) => s.id);
         if (orphanIds.length && !allowOrphanRemoval)
           throw new Error(
             "El respaldo deja sesiones sin curso. Confirma su eliminación antes de importar.",
           );
-        await db.scheduleEntries.bulkDelete(orphanIds);
+        await database.scheduleEntries.bulkDelete(orphanIds);
       }
-      await db.courses.clear();
-      await db.courses.bulkAdd(withCourseOrder(b.courses));
-      await db.settings.put(b.settings);
+      await database.courses.clear();
+      await database.courses.bulkAdd(withCourseOrder(b.courses));
+      await database.settings.put(b.settings);
     },
   );
 }
