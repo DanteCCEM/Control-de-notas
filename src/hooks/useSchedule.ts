@@ -1,6 +1,25 @@
-﻿import { useEffect, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "../services/db";
+import { db, saveScheduleRange } from "../services/db";
+import { defaultScheduleRange, validScheduleRange } from "../utils/scheduleRange";
+export function useScheduleRange() {
+  const stored = useLiveQuery(async () => {
+    const settings = await db.settings.get("main");
+    return validScheduleRange(settings?.scheduleRange) ? settings.scheduleRange : defaultScheduleRange;
+  });
+  const [pending, setPending] = useState<{ start: number; end: number } | null>(null);
+  const sequence = useRef(0);
+  useEffect(() => {
+    if (pending && stored?.start === pending.start && stored.end === pending.end) setPending(null);
+  }, [stored, pending]);
+  async function save(range: { start: number; end: number }) {
+    const current = ++sequence.current;
+    setPending(range);
+    try { await saveScheduleRange(range); }
+    catch (error) { if (current === sequence.current) setPending(null); throw error; }
+  }
+  return { range: pending ?? stored, save };
+}
 export function useSchedule() {
   return useLiveQuery(() => db.scheduleEntries.toArray());
 }

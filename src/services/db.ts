@@ -1,6 +1,7 @@
 ﻿import { validGrade, parseBackup } from "../utils/grades";
 import Dexie, { type Table } from "dexie";
 import { validCourseColor } from "../utils/courseColors";
+import { validScheduleRange } from "../utils/scheduleRange";
 import type { ScheduleSession } from "../types/schedule";
 import type { Course, Settings, Backup } from "../types";
 import {
@@ -108,6 +109,17 @@ export async function updateGrade(
     c.grades[index].value = value;
     await db.courses.put(c);
   });
+}
+export async function updateCourseColor(id: string, color: string | undefined, database: NotesDB = db) {
+  if (color !== undefined && !validCourseColor(color)) throw new Error("Color inválido.");
+  await database.transaction("rw", database.courses, async () => {
+    if (!(await database.courses.get(id))) throw new Error("El curso ya no existe.");
+    await database.courses.update(id, { color });
+  });
+}
+export async function saveScheduleRange(range: { start: number; end: number }, database: NotesDB = db) {
+  if (!validScheduleRange(range)) throw new Error("Rango horario inválido.");
+  if (!await database.settings.update("main", { scheduleRange: range })) throw new Error("No se pudo guardar el rango horario.");
 }
 export async function lockGrade(id: string, index: number, locked: boolean) {
   await db.transaction("rw", db.courses, async () => {

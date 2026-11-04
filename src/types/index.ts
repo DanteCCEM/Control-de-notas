@@ -15,6 +15,7 @@ export interface Settings {
   id: "main";
   threshold: number;
   dark: boolean;
+  scheduleRange?: { start: number; end: number };
 }
 interface BackupBase {
   courses: Course[];

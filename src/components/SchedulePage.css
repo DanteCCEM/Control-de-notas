@@ -433,9 +433,6 @@ button.class-block {
 .dark .schedule-conflict {
   color: #efda90;
 }
-.dark .class-block {
-  color: #153c57;
-}
 .schedule-info,
 .next-class > div {
   min-width: 0;
@@ -601,10 +598,26 @@ button.class-block {
   }
 }
 
-/* Pale course surfaces use fixed dark text in both themes. */
-.class-block, .daily-session { color: #153c57; text-shadow: none; }
-.dark .daily-session { color: #153c57; }
-.daily-session .meeting-link, .dark .daily-session .meeting-link { color: #154d75; }
+/* Explicit selectors keep global Aero button shadows off small calendar text. */
+.schedule-page button.class-block,
+.schedule-page .daily-session { color: #153c57; text-shadow: none; }
+.schedule-page .class-block svg,
+.schedule-page .daily-session svg { filter: none; }
+.dark .schedule-page button.class-block,
+.dark .schedule-page .daily-session {
+  background: linear-gradient(#ffffff0a, transparent 26%), var(--session-dark-tint);
+  border-color: var(--session-dark-accent);
+  color: #edf7ff;
+  box-shadow: inset 0 1px 0 #ffffff1a, 0 2px 4px #0003;
+  text-shadow: none;
+}
+.dark .schedule-page button.class-block:hover {
+  box-shadow: 0 0 0 2px var(--session-dark-accent);
+}
+.dark .schedule-page .course-dot { background: var(--session-dark-accent); }
+.daily-session .meeting-link { color: #154d75; }
+.dark .schedule-page .daily-session .meeting-link { color: #b5e1ff; }
+.dark .schedule-page .daily-session .session-notes { color: #d0e4f2; }
 
 .session-recurrence { font-size: 10px; line-height: 1.4; margin-top: 5px; overflow-wrap: anywhere; }
 .stored-series { padding: 18px; margin-top: 20px; }

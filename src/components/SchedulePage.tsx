@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import type { Course } from "../types";
 import { weekDays, type ScheduleSession } from "../types/schedule";
-import { useLocalClock, useSchedule } from "../hooks/useSchedule";
+import { useLocalClock, useSchedule, useScheduleRange } from "../hooks/useSchedule";
 import {
   nextClass,
   remainingTime,
@@ -29,6 +29,7 @@ import {
 import { deleteSession } from "../services/schedule";
 import { SessionEditor } from "./SessionEditor";
 import { CourseBadge } from "./CourseBadge";
+import { courseDarkColors } from "../utils/courseColors";
 import { Modal } from "./Modal";
 import { weekSessions, recurrenceLabel, parseLocalDate } from "../utils/recurrence";
 import "./SchedulePage.css";
@@ -43,10 +44,9 @@ export function SchedulePage({
 }) {
   const storedSessions = useSchedule();
   const now = useLocalClock();
+  const { range, save: saveRange } = useScheduleRange();
   const [weekOffset, setWeekOffset] = useState(0),
-    [day, setDay] = useState((now.getDay() + 6) % 7),
-    [rangeStart, setRangeStart] = useState(7),
-    [rangeEnd, setRangeEnd] = useState(22);
+    [day, setDay] = useState((now.getDay() + 6) % 7);
   const [editor, setEditor] = useState<ScheduleSession | null | undefined>(
       undefined,
     ),
@@ -57,13 +57,18 @@ export function SchedulePage({
   const last = new Date(week);
   last.setDate(last.getDate() + 6);
   const sessions = storedSessions ? weekSessions(storedSessions, week) : undefined;
-  if (!sessions)
+  if (!sessions || !range)
     return (
       <section className="panel schedule-loading" role="status">
         Cargando tu horario…
       </section>
     );
   const courseById = new Map(courses.map((c) => [c.id, c]));
+  const { start: rangeStart, end: rangeEnd } = range;
+  async function changeRange(start: number, end: number) {
+    try { await saveRange({ start, end }); }
+    catch (error) { setMessage(error instanceof Error ? error.message : "No se pudo guardar el rango horario."); }
+  }
   const next = nextClass(storedSessions!, now);
   const hours = Array.from(
     { length: rangeEnd - rangeStart + 1 },
@@ -83,9 +88,12 @@ export function SchedulePage({
   };
   const style = (s: ScheduleSession): CSSProperties => {
     const [accent, tint] = courseColors(s.courseId, courseById.get(s.courseId)?.color);
+    const [darkAccent, darkTint] = courseDarkColors(s.courseId, courseById.get(s.courseId)?.color);
     return {
       "--session-accent": accent,
       "--session-tint": tint,
+      "--session-dark-accent": darkAccent,
+      "--session-dark-tint": darkTint,
     } as CSSProperties;
   };
   async function remove(s: ScheduleSession) {
@@ -134,7 +142,6 @@ export function SchedulePage({
           {s.modality}
           {current(s) && <strong> · En curso</strong>}
         </div>
-        <div className="session-recurrence">{s.seriesId ? `${s.date} · clase ${(s.occurrenceIndex ?? 0) + 1} · ${recurrenceLabel(storedSessions!.find(master => master.id === s.seriesId)!)}` : recurrenceLabel(s)}</div>
       </>
     );
   }
@@ -283,8 +290,7 @@ export function SchedulePage({
                 value={rangeStart}
                 onChange={(e) => {
                   const h = Number(e.target.value);
-                  setRangeStart(h);
-                  if (h >= rangeEnd) setRangeEnd(h + 1);
+                  void changeRange(h, h >= rangeEnd ? h + 1 : rangeEnd);
                 }}
               >
                 {Array.from({ length: 24 }, (_, i) => (
@@ -301,8 +307,7 @@ export function SchedulePage({
                 value={rangeEnd}
                 onChange={(e) => {
                   const h = Number(e.target.value);
-                  setRangeEnd(h);
-                  if (h <= rangeStart) setRangeStart(h - 1);
+                  void changeRange(h <= rangeStart ? h - 1 : rangeStart, h);
                 }}
               >
                 {Array.from({ length: 24 }, (_, i) => (
@@ -320,8 +325,7 @@ export function SchedulePage({
             visible.{" "}
             <button
               onClick={() => {
-                setRangeStart(0);
-                setRangeEnd(24);
+                void changeRange(0, 24);
               }}
             >
               Ver día completo
@@ -453,17 +457,6 @@ export function SchedulePage({
                     <Trash2 size={15} />
                   </button>
                 </div>
-                {s.meetingUrl && (
-                  <a
-                    className="meeting-link"
-                    href={s.meetingUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Videoconferencia <ExternalLink size={13} />
-                  </a>
-                )}
-                {s.notes && <p className="session-notes">{s.notes}</p>}
               </article>
             ))}
           {!sessions.some(

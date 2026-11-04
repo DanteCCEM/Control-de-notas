@@ -22,3 +22,12 @@ export function courseColors(id: string, customColor?: string): [string, string]
   const index = hash % coursePalette.length;
   return [coursePalette[index].color, tints[index]];
 }
+/** Theme variants are derived at render time; the saved course color stays intact. */
+export function courseDarkColors(id: string, customColor?: string): [string, string] {
+  const [accent] = courseColors(id, customColor);
+  const channels = [1, 3, 5].map(start => parseInt(accent.slice(start, start + 2), 16));
+  const hex = (values: number[]) => "#" + values.map(value => Math.round(value).toString(16).padStart(2, "0")).join("");
+  const edge = hex(channels.map(value => value * .5 + 255 * .5));
+  const surface = hex(channels.map((value, index) => value * .2 + [20, 43, 61][index] * .8));
+  return [edge, surface];
+}

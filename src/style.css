@@ -1006,6 +1006,24 @@ select {
 input[hidden] {
   display: none;
 }
+/* Native option popups need solid colors; they cannot render the Aero gradient. */
+select {
+  background-color: var(--surface);
+}
+select option,
+select optgroup {
+  background-color: var(--surface);
+  color: var(--text);
+  text-shadow: none;
+}
+select option:checked {
+  background-color: #c9e8fa;
+  color: #153c57;
+}
+.dark select option:checked {
+  background-color: #345975;
+  color: #edf7ff;
+}
 label {
   display: block;
   font-size: 12px;

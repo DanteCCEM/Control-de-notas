@@ -311,8 +311,8 @@ try {
   assert.equal(series.date, '2026-12-29');
   assert.equal((await readSchedule()).length, 2, 'A series must occupy one record');
   await setField('.range-controls input[type=date]', '2026-12-29');
-  await waitFor(`!![...document.querySelectorAll('.class-block')].find(block=>block.textContent.includes('2026-12-29'))`);
-  await evaluate(`[...document.querySelectorAll('.class-block')].find(block=>block.textContent.includes('2026-12-29')).click()`);
+  await waitFor(`!![...document.querySelectorAll('.class-block')].find(block=>block.getAttribute('aria-label')?.includes('Martes'))`);
+  await evaluate(`[...document.querySelectorAll('.class-block')].find(block=>block.getAttribute('aria-label')?.includes('Martes')).click()`);
   await waitFor('!!document.querySelector("input[name=edit-scope]")');
   await setField('.schedule-editor input[placeholder]', 'Aula excepción');
   await evaluate('document.querySelector(".schedule-editor").requestSubmit()');
@@ -341,6 +341,22 @@ try {
   await evaluate(`document.querySelector('.stored-series').open=true;[...document.querySelectorAll('.stored-series button')].find(button=>button.textContent==='Eliminar serie').click()`);
   await waitFor(`![...document.querySelectorAll('.stored-series button')].some(button=>button.textContent==='Eliminar serie')`);
   assert.equal((await readSchedule()).length, 1);
+  const coursesBeforeTheme = (await read()).courses;
+  await evaluate(`document.querySelector('button[aria-label="Alternar modo claro y oscuro"]').click()`);
+  await waitFor('document.documentElement.classList.contains("dark")');
+  await call("Emulation.setDeviceMetricsOverride", { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
+  assert.deepEqual(await evaluate(`(()=>{const block=document.querySelector('.class-block'),style=getComputedStyle(block);return {background:style.backgroundColor,text:style.color,shadow:style.textShadow,iconFilter:getComputedStyle(block.querySelector('svg')).filter}})()`),
+    { background: 'rgb(44, 53, 81)', text: 'rgb(237, 247, 255)', shadow: 'none', iconFilter: 'none' });
+  fs.writeFileSync('.launcher/schedule-dark.png', Buffer.from((await call('Page.captureScreenshot')).data, 'base64'));
+  await call("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await evaluate(`document.querySelector('.day-tabs button').click()`);
+  await waitFor('!!document.querySelector(".daily-session")');
+  assert.deepEqual(await evaluate(`(()=>{const style=getComputedStyle(document.querySelector('.daily-session'));return {background:style.backgroundColor,text:style.color,shadow:style.textShadow}})()`),
+    { background: 'rgb(44, 53, 81)', text: 'rgb(237, 247, 255)', shadow: 'none' });
+  await evaluate(`document.querySelector('button[aria-label="Alternar modo claro y oscuro"]').click()`);
+  await waitFor('!document.documentElement.classList.contains("dark")');
+  assert.equal(await evaluate(`getComputedStyle(document.querySelector('.class-block')).color`), 'rgb(21, 60, 87)');
+  assert.deepEqual((await read()).courses, coursesBeforeTheme);
   assert.deepEqual(errors, []);
   assert.deepEqual(external, []);
   assert.deepEqual(failedResources, []);
@@ -354,6 +370,7 @@ try {
         stage1NavigationColorsAndNativeDrag: true,
         responsive,
         recurringSeriesLifecycle: true,
+        scheduleDarkAndLightThemes: true,
         errors,
         external,
         failedResources,

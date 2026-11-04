@@ -3,7 +3,7 @@ import "fake-indexeddb/auto";
 import { afterEach, expect, it } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
-import { courseColors, coursePalette } from "./utils/courseColors";
+import { courseColors, courseDarkColors, coursePalette } from "./utils/courseColors";
 import { db, defaults, exportBackup, importBackup, newCourse, saveCourse, updateGrade, lockGrade } from "./services/db";
 import { parseBackup } from "./utils/grades";
 import { saveSessions } from "./services/schedule";
@@ -60,5 +60,12 @@ it("mantiene contraste mínimo 4.5:1 con texto fijo en todas las superficies de 
   for (const color of [undefined, "#000000", "#ffffff", "#ffff00", "#0000ff", ...coursePalette.map(option => option.color)]) {
     const [, tint] = courseColors("a", color);
     for (const text of ["#153c57", "#36576d", "#154d75"]) expect((luminance(tint) + .05) / (luminance(text) + .05)).toBeGreaterThanOrEqual(4.5);
+  }
+  for (const color of [undefined, "#000000", "#ffffff", "#ffff00", "#0000ff", ...coursePalette.map(option => option.color)]) {
+    const [, surface] = courseDarkColors("a", color);
+    // Include the brightest point of the subtle white Aero gloss.
+    const gloss = "#" + [1, 3, 5].map(start => Math.round(parseInt(surface.slice(start, start + 2), 16) * (245 / 255) + 10).toString(16).padStart(2, "0")).join("");
+    for (const text of ["#edf7ff", "#d0e4f2", "#b5e1ff"]) expect((luminance(text) + .05) / (luminance(gloss) + .05)).toBeGreaterThanOrEqual(4.5);
+    expect(courseDarkColors("a", color)[1]).not.toBe(courseColors("a", color)[1]);
   }
 });

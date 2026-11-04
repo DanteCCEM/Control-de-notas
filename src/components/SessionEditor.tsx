@@ -8,6 +8,7 @@ import {
   type SessionDraft,
 } from "../types/schedule";
 import { Modal } from "./Modal";
+import { ScheduleCourseColor } from "./ScheduleCourseColor";
 import { proposedSessions, saveSessions } from "../services/schedule";
 import { dateDay, expandSession, localDate, MAX_WEEKS, recurrenceLabel, sessionFields } from "../utils/recurrence";
 import {
@@ -157,6 +158,7 @@ export function SessionEditor({
             ))}
           </select>
         </label>
+        {courses.find(course => course.id === draft.courseId) && <ScheduleCourseColor key={draft.courseId} course={courses.find(course => course.id === draft.courseId)!} />}
         <fieldset><legend>Repetición</legend>
           <label>Frecuencia<select value={mode} disabled={!!master && scope === "occurrence"} onChange={e => {
             const date = draft.date ?? localDate(new Date());

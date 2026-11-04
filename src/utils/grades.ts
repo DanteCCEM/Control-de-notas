@@ -1,6 +1,7 @@
 ﻿import type { Backup, Course } from "../types";
 import { withCourseOrder, validOrder } from "./courseOrder";
 import { validCourseColor } from "./courseColors";
+import { validScheduleRange } from "./scheduleRange";
 import { validateSession, sameSlot } from "./schedule";
 
 export function validGrade(n: number) {
@@ -72,7 +73,8 @@ export function parseBackup(raw: string): Backup {
     !b.settings ||
     b.settings.id !== "main" ||
     !validGrade(b.settings.threshold) ||
-    typeof b.settings.dark !== "boolean"
+    typeof b.settings.dark !== "boolean" ||
+    (b.settings.scheduleRange !== undefined && !validScheduleRange(b.settings.scheduleRange))
   )
     throw new Error("El respaldo o su configuración no son válidos.");
   const ids = new Set();

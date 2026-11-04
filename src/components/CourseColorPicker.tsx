@@ -1,7 +1,7 @@
 import { courseColors, coursePalette } from "../utils/courseColors";
-export function CourseColorPicker({ id, color, onChange }: { id: string; color?: string; onChange: (color: string | undefined) => void }) {
+export function CourseColorPicker({ id, color, onChange, disabled = false }: { id: string; color?: string; onChange: (color: string | undefined) => void; disabled?: boolean }) {
   const [accent, tint] = courseColors(id, color);
-  return <fieldset className="course-color-picker">
+  return <fieldset className="course-color-picker" disabled={disabled}>
     <legend>Color del curso</legend>
     <div className="course-color-palette">
       <button type="button" aria-pressed={color === undefined} onClick={() => onChange(undefined)}>Automático</button>
